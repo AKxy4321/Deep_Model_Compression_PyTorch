@@ -137,16 +137,6 @@ def l1_norms(model, first_time):
     return l1_norms_list
 
 
-def conv_flops(layer, input_shape):
-    output_shape = layer(torch.zeros(1, *input_shape)).shape
-    kernel_ops = torch.prod(torch.tensor(layer.kernel_size))
-    in_channels = layer.in_channels
-    out_channels = layer.out_channels
-    output_elements = torch.prod(torch.tensor(output_shape[2:]))
-    flops = out_channels * output_elements * (in_channels * kernel_ops + 1)
-    return flops.item()
-
-
 def dense_flops(layer):
     return 2 * layer.in_features * layer.out_features
 
@@ -157,7 +147,7 @@ def count_model_params_flops(model, first_time, input_shape):
 
     for i, layer in enumerate(model.children()):
         if isinstance(layer, (nn.Conv1d, nn.Conv2d, nn.Conv3d)):
-            flops = conv_flops(layer, input_shape)
+            flops = conv_flops(layer)
             print(
                 i,
                 layer.__class__.__name__,
