@@ -241,14 +241,17 @@ def my_delete_filters(model, weight_list_per_epoch, percentage):
         conv_idx = all_conv_layers[layer_index]
         layer = layers[conv_idx]
         prune_indices = filter_pruning_indices[layer_index]
-
+        prev_out_channels = model[conv_idx-1].out_channels if conv_idx > 0 else layer.in_channels
+        
+        
+        
         if isinstance(layer, nn.Conv2d):
             # New Conv2d with fewer filters
             remaining_filters = [i for i in range(layer.out_channels) if i not in prune_indices]
             new_out_channels = len(remaining_filters)
 
             new_conv = nn.Conv2d(
-                in_channels=layer.in_channels,
+                in_channels=prev_out_channels,
                 out_channels=new_out_channels,
                 kernel_size=layer.kernel_size,
                 stride=layer.stride,
