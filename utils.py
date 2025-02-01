@@ -237,13 +237,11 @@ def my_delete_filters(model, weight_list_per_epoch, percentage):
     # Convert model to list format to replace layers
     layers = list(model.children())
 
+    prev_out_channels = 1
     for layer_index in range(len(all_conv_layers)):
         conv_idx = all_conv_layers[layer_index]
         layer = layers[conv_idx]
         prune_indices = filter_pruning_indices[layer_index]
-        prev_out_channels = model[conv_idx-1].out_channels if conv_idx > 0 else layer.in_channels
-        
-        
         
         if isinstance(layer, nn.Conv2d):
             # New Conv2d with fewer filters
@@ -268,6 +266,8 @@ def my_delete_filters(model, weight_list_per_epoch, percentage):
 
             # Replace the layer
             layers[conv_idx] = new_conv
+
+            prev_out_channels = new_out_channels.out_channels
 
     # Reconstruct the model
     pruned_model = nn.Sequential(*layers)
