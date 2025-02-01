@@ -8,21 +8,21 @@ from torchvision import datasets, transforms
 import torch.nn as nn
 
 
-def my_get_all_conv_layers(model, first_time):
+def my_get_all_conv_layers(model):
     all_conv_layers = []
 
     all_conv_layers = [i for i, layer in enumerate(model) if isinstance(layer, nn.Conv2d)]
     
-    return all_conv_layers if first_time else all_conv_layers[1:]
+    return all_conv_layers
 
 
 def my_get_all_dense_layers(model):
     return [i for i, layer in enumerate(model) if isinstance(layer, nn.Linear)]
 
 
-def my_get_weights_in_conv_layers(model, first_time):
+def my_get_weights_in_conv_layers(model):
     weights = []
-    all_conv_layers = my_get_all_conv_layers(model, first_time)
+    all_conv_layers = my_get_all_conv_layers(model)
 
     for i in all_conv_layers:
         weights.append(list(model.children())[i].weight.data)
@@ -72,7 +72,7 @@ def my_get_cosine_sims_filters_per_epoch(weight_list_per_epoch):
     return sorted_filter_pair_sum
 
 
-def find_pruning_indices(model, weight_list_per_epoch, first_time, percentage):
+def find_pruning_indices(model, weight_list_per_epoch, percentage):
     sorted_filter_pair_sums = my_get_cosine_sims_filters_per_epoch(
         weight_list_per_epoch
     )
@@ -87,7 +87,7 @@ def find_pruning_indices(model, weight_list_per_epoch, first_time, percentage):
             )  # Convert to zero-based index
         all_layer_filter_pairs.append(filter_pairs)
 
-    l1_norm_matrix_list = l1_norms(model, first_time)
+    l1_norm_matrix_list = l1_norms(model)
     all_layer_pruning_indices = []
 
     for layer_index, filter_pairs in enumerate(all_layer_filter_pairs):
@@ -114,8 +114,8 @@ def my_get_filter_pruning_indices(filter_pairs, l1_norms, prune_percentage):
     return list(filter_pruning_indices)
 
 
-def l1_norms(model, first_time):
-    conv_layers = my_get_all_conv_layers(model, first_time)
+def l1_norms(model):
+    conv_layers = my_get_all_conv_layers(model)
     l1_norms_list = []
 
     for layer_index in conv_layers:
@@ -128,7 +128,7 @@ def l1_norms(model, first_time):
     return l1_norms_list
 
 
-# def count_model_params_flops(model, first_time, input_shape):
+# def count_model_params_flops(model, input_shape):
 #     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 #     total_flops = 0
 
@@ -179,7 +179,7 @@ def count_parameters(model):
     return sum(p.numel() for p in model.parameters())
 
 
-def count_model_params_flops(model, first_time, input_shape):
+def count_model_params_flops(model, input_shape):
     inputs = torch.randn(input_shape)
     macs = profile_macs(model, inputs)
     flops = 2 * macs
@@ -189,25 +189,24 @@ def count_model_params_flops(model, first_time, input_shape):
 
 
 class Get_Weights:
-    def __init__(self, first_time):
+    def __init__(self):
         self.weight_list = []  # Using a list of list to store weight tensors per epoch
-        self.first_time = first_time
 
     def on_epoch_end(self, epoch, model):
         if epoch == 0:
-            all_conv_layers = my_get_all_conv_layers(model, self.first_time)
+            all_conv_layers = my_get_all_conv_layers(model)
             for i in range(len(all_conv_layers)):
                 self.weight_list.append(
                     []
                 )  # appending empty lists for later appending weight tensors
 
         for index, each_weight in enumerate(
-            my_get_weights_in_conv_layers(model, self.first_time)
+            my_get_weights_in_conv_layers(model)
         ):
             self.weight_list[index].append(each_weight)
 
 
-def my_get_l1_norms_filters(model, first_time):
+def my_get_l1_norms_filters(model):
     """
     Arguments:
         model:
@@ -218,7 +217,7 @@ def my_get_l1_norms_filters(model, first_time):
         Return:
             l1_norms of all filters of every layer as a list
     """
-    conv_layers = my_get_all_conv_layers(model, first_time)
+    conv_layers = my_get_all_conv_layers(model)
     cosine_sums = list()
     for index, layer_idx in enumerate(conv_layers):
         layer = model[layer_idx]
@@ -235,11 +234,11 @@ def my_get_l1_norms_filters(model, first_time):
     return cosine_sums
 
 
-def my_delete_filters(model, weight_list_per_epoch, percentage, first_time):
+def my_delete_filters(model, weight_list_per_epoch, percentage):
     filter_pruning_indices, _ = find_pruning_indices(
-        model, weight_list_per_epoch, first_time, percentage
+        model, weight_list_per_epoch, percentage
     )
-    all_conv_layers = my_get_all_conv_layers(model, first_time)
+    all_conv_layers = my_get_all_conv_layers(model)
 
     for index, (layer_name, layer) in enumerate(model.named_modules()):
         if layer in all_conv_layers:

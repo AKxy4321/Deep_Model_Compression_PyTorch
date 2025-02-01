@@ -7,9 +7,9 @@ import os
 from utils import *
 from lenet import LeNet
 
-INPUT_SHAPE = (1,1, 28,28)
+INPUT_SHAPE = (1, 1, 28, 28)
 
-def optimize(model, weight_list_per_epoch, epochs, percentage, first_time):
+def optimize(model, weight_list_per_epoch, epochs, percentage):
     """
     Arguments:
         model: initial model
@@ -34,7 +34,7 @@ def optimize(model, weight_list_per_epoch, epochs, percentage, first_time):
     )
 
     regularizer_value = my_get_regularizer_value(
-        model, weight_list_per_epoch, percentage, first_time
+        model, weight_list_per_epoch, percentage
     )
     print("INITIAL REGULARIZER VALUE ", regularizer_value)
     criterion = custom_loss(lmbda=0.1, regularizer_value=regularizer_value)
@@ -77,7 +77,7 @@ def optimize(model, weight_list_per_epoch, epochs, percentage, first_time):
     return model, history
 
 
-def my_get_regularizer_value(model, weight_list_per_epoch, percentage, first_time):
+def my_get_regularizer_value(model, weight_list_per_epoch, percentage):
     """
     Arguments:
         model: initial model
@@ -88,9 +88,9 @@ def my_get_regularizer_value(model, weight_list_per_epoch, percentage, first_tim
         regularizer_value
     """
     _, filter_pairs = find_pruning_indices(
-        model, weight_list_per_epoch, first_time, percentage
+        model, weight_list_per_epoch, percentage
     )
-    l1_norms = my_get_l1_norms_filters(model, first_time)
+    l1_norms = my_get_l1_norms_filters(model)
     regularizer_value = 0
     for layer_index, layer in enumerate(filter_pairs):
         for episode in layer:
@@ -109,7 +109,7 @@ def custom_loss(lmbda, regularizer_value):
     return loss
 
 
-def train(model, epochs, first_time, learning_rate=0.001):
+def train(model, epochs, learning_rate=0.001):
     """
     Arguments:
         model: model to be trained
@@ -192,15 +192,15 @@ def logging(model, history, log_dict=None):
             "filters_in_conv1": [],
             "filters_in_conv2": [],
         }
-    initial_params, initial_flops = count_model_params_flops(model, True, INPUT_SHAPE)
-    print(f"Initial FLOPS: {initial_flops}, Initial params : {initial_params}")
+        initial_params, initial_flops = count_model_params_flops(model, INPUT_SHAPE)
+        print(f"INITIAL FLOPS: {initial_flops}, INITIAL params : {initial_params}")
 
     # best_acc_index = history["val_accuracy"].index(max(history["val_accuracy"]))
     # log_dict["train_loss"].append(history["loss"][best_acc_index])
     # log_dict["train_acc"].append(history["accuracy"][best_acc_index])
     # log_dict["val_loss"].append(history["val_loss"][best_acc_index])
     # log_dict["val_acc"].append(history["val_accuracy"][best_acc_index])
-    a, b = count_model_params_flops(model, True, INPUT_SHAPE)
+    a, b = count_model_params_flops(model, INPUT_SHAPE)
     log_dict["total_params"].append(a)
     log_dict["total_flops"].append(b)
     # log_dict["filters_in_conv1"].append(model[0].out_channels)
@@ -215,14 +215,14 @@ model = LeNet()
 
 print("Model Initialized")
 
-model, history, weight_list_per_epoch = train(model, 1, True)
+model, history, weight_list_per_epoch = train(model, 1)
 log_dict = logging(model, history, None)
 
 validation_accuracy = max(history["val_accuracy"])
 max_val_acc = validation_accuracy
 count = 0
 all_models = list()
-a, b = count_model_params_flops(model, False, INPUT_SHAPE)
+a, b = count_model_params_flops(model, INPUT_SHAPE)
 print(a, b)
 
 print("Starting Pruning Process")
@@ -234,41 +234,43 @@ while validation_accuracy - max_val_acc >= -0.01:
         max_val_acc = validation_accuracy
 
     if count < 1:
-        optimize(model, weight_list_per_epoch, 1, 5, True)
-        model = my_delete_filters(model, weight_list_per_epoch, 5, True)
-        model, history, weight_list_per_epoch = train(model, 1, False)
+        optimize(model, weight_list_per_epoch, 1, 5)
+        model = my_delete_filters(model, weight_list_per_epoch, 5)
+        print("Model after pruning:")
+        print(model)
+        model, history, weight_list_per_epoch = train(model, 1)
 
     elif count < 2:
-        optimize(model, weight_list_per_epoch, 1, 7, False)
-        model = my_delete_filters(model, weight_list_per_epoch, 7, False)
-        model, history, weight_list_per_epoch = train(model, 1, False)
+        optimize(model, weight_list_per_epoch, 1, 7)
+        model = my_delete_filters(model, weight_list_per_epoch, 7)
+        model, history, weight_list_per_epoch = train(model, 1)
 
     elif count < 3:
-        optimize(model, weight_list_per_epoch, 1, 9, False)
-        model = my_delete_filters(model, weight_list_per_epoch, 9, False)
-        model, history, weight_list_per_epoch = train(model, 1, False)
+        optimize(model, weight_list_per_epoch, 1, 9)
+        model = my_delete_filters(model, weight_list_per_epoch, 9)
+        model, history, weight_list_per_epoch = train(model, 1)
 
     elif count < 4:
-        optimize(model, weight_list_per_epoch, 1, 11, False)
-        model = my_delete_filters(model, weight_list_per_epoch, 11, False)
-        model, history, weight_list_per_epoch = train(model, 1, False)
+        optimize(model, weight_list_per_epoch, 1, 11)
+        model = my_delete_filters(model, weight_list_per_epoch, 11)
+        model, history, weight_list_per_epoch = train(model, 1)
 
     elif count < 5:
-        optimize(model, weight_list_per_epoch, 1, 13, False)
-        model = my_delete_filters(model, weight_list_per_epoch, 13, False)
-        model, history, weight_list_per_epoch = train(model, 1, False)
+        optimize(model, weight_list_per_epoch, 1, 13)
+        model = my_delete_filters(model, weight_list_per_epoch, 13)
+        model, history, weight_list_per_epoch = train(model, 1)
 
     elif count < 10:
-        optimize(model, weight_list_per_epoch, 1, 15, False)
-        model = my_delete_filters(model, weight_list_per_epoch, 15, False)
-        model, history, weight_list_per_epoch = train(model, 1, False)
+        optimize(model, weight_list_per_epoch, 1, 15)
+        model = my_delete_filters(model, weight_list_per_epoch, 15)
+        model, history, weight_list_per_epoch = train(model, 1)
 
     else:
-        optimize(model, weight_list_per_epoch, 10, 35, False)
-        model = my_delete_filters(model, weight_list_per_epoch, 35, False)
-        model, history, weight_list_per_epoch = train(model, 10, False)
+        optimize(model, weight_list_per_epoch, 10, 35)
+        model = my_delete_filters(model, weight_list_per_epoch, 35)
+        model, history, weight_list_per_epoch = train(model, 10)
 
-    a, b = count_model_params_flops(model, False, INPUT_SHAPE)
+    a, b = count_model_params_flops(model, INPUT_SHAPE)
     print(a, b)
 
     validation_accuracy = max(history["val_accuracy"])
@@ -278,7 +280,7 @@ while validation_accuracy - max_val_acc >= -0.01:
 
 print(model)
 
-model, history, weight_list_per_epoch = train(model, 60, False, learning_rate=0.001)
+model, history, weight_list_per_epoch = train(model, 60, learning_rate=0.001)
 log_dict, max_val_acc, count, all_models = logging(model, history, log_dict)
 
 log_df = pd.DataFrame(log_dict)
