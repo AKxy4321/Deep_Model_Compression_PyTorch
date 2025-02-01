@@ -31,7 +31,7 @@ def my_get_weights_in_conv_layers(model):
 
 
 def my_get_cosine_sims_filters_per_epoch(weight_list_per_epoch):
-    num_layers = len(weight_list_per_epoch[0])
+    num_layers = len(weight_list_per_epoch)
     print(len(weight_list_per_epoch), len(weight_list_per_epoch[0]))
     print(len(weight_list_per_epoch[0][0]))
     num_filters = [
