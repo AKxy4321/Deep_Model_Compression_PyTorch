@@ -1,6 +1,4 @@
 from itertools import combinations
-
-
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -11,14 +9,15 @@ import torch.nn as nn
 
 
 def my_get_all_conv_layers(model, first_time):
-    all_conv_layers = [
-        i for i, layer in enumerate(model.layers) if isinstance(layer, nn.Conv2d)
-    ]
+    all_conv_layers = []
+
+    all_conv_layers = [i for i, layer in enumerate(model) if isinstance(layer, nn.Conv2d)]
+    
     return all_conv_layers if first_time else all_conv_layers[1:]
 
 
 def my_get_all_dense_layers(model):
-    return [i for i, layer in enumerate(model.layers) if isinstance(layer, nn.Linear)]
+    return [i for i, layer in enumerate(model) if isinstance(layer, nn.Linear)]
 
 
 def my_get_weights_in_conv_layers(model, first_time):
@@ -33,9 +32,13 @@ def my_get_weights_in_conv_layers(model, first_time):
 
 def my_get_cosine_sims_filters_per_epoch(weight_list_per_epoch):
     num_layers = len(weight_list_per_epoch)
+    print(len(weight_list_per_epoch), len(weight_list_per_epoch[0]))
+    print(len(weight_list_per_epoch[0][0]))
     num_filters = [
-        torch.tensor(weight_list_per_epoch[i]).shape[-1] for i in range(num_layers)
+        np.array(weight_list_per_epoch[0][i]).shape[1] for i in range(num_layers)
     ]
+
+    # num_filters = [np.array(weight_list_per_epoch[i]).shape[-1] for i in range(num_layers)]
     sorted_filter_pair_sum = [{} for _ in range(num_layers)]
 
     filter_pair_similarities = [
@@ -169,6 +172,7 @@ def l1_norms(model, first_time):
 #         * kernel_shape[0]
 #     )
 from torchprofile import profile_macs
+
 
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters())
