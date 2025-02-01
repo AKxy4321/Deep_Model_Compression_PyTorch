@@ -203,6 +203,8 @@ def logging(model, history, log_dict=None):
     a, b = count_model_params_flops(model, INPUT_SHAPE)
     log_dict["total_params"].append(a)
     log_dict["total_flops"].append(b)
+    if log_dict is not None:
+        print(f"Current FLOPS: {initial_flops}, Current params : {initial_params}")
     # log_dict["filters_in_conv1"].append(model[0].out_channels)
     # log_dict["filters_in_conv2"].append(model[3].out_channels)
 
