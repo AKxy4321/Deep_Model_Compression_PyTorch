@@ -204,7 +204,7 @@ def logging(model, history, log_dict=None):
     log_dict["total_params"].append(a)
     log_dict["total_flops"].append(b)
     if log_dict is not None:
-        print(f"Current FLOPS: {initial_flops}, Current params : {initial_params}")
+        print(f"Current FLOPS: {b}, Current params : {a}")
     # log_dict["filters_in_conv1"].append(model[0].out_channels)
     # log_dict["filters_in_conv2"].append(model[3].out_channels)
 
