@@ -267,7 +267,7 @@ def my_delete_filters(model, weight_list_per_epoch, percentage):
             # Replace the layer
             layers[conv_idx] = new_conv
 
-            prev_out_channels = new_out_channels.out_channels
+            prev_out_channels = new_out_channels
 
     # Reconstruct the model
     pruned_model = nn.Sequential(*layers)
