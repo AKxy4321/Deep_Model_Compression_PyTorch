@@ -90,7 +90,7 @@ def my_get_regularizer_value(model, weight_list_per_epoch, percentage):
     _, filter_pairs = find_pruning_indices(
         model, weight_list_per_epoch, percentage
     )
-    l1_norms = my_get_l1_norms_filters(model)
+    l1_norms = my_get_cosine_sims_filters(model)
     regularizer_value = 0
     for layer_index, layer in enumerate(filter_pairs):
         for episode in layer:
@@ -138,7 +138,8 @@ def train(model, epochs, learning_rate=0.001):
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
     history = {"loss": [], "accuracy": [], "val_loss": [], "val_accuracy": []}
-    weight_list_per_epoch = []
+    conv_indices = my_get_all_conv_layers(model)
+    weight_list_per_epoch = [[] for _ in conv_indices]
     print("Training model")
     for epoch in range(epochs):
         model.train()
@@ -158,6 +159,11 @@ def train(model, epochs, learning_rate=0.001):
         history["loss"].append(train_loss)
         history["accuracy"].append(accuracy)
 
+        for i, layer_idx in enumerate(conv_indices):
+            layer = model[layer_idx]
+            weight = layer.weight.data.clone().cpu()  # Ensure tensor is on CPU
+            weight_list_per_epoch[i].append(weight)
+
         model.eval()
         val_loss = 0
         correct = 0
@@ -171,11 +177,6 @@ def train(model, epochs, learning_rate=0.001):
         val_accuracy = 100.0 * correct / len(test_loader.dataset)
         history["val_loss"].append(val_loss)
         history["val_accuracy"].append(val_accuracy)
-
-        # Save weights at the end of each epoch
-        weight_list_per_epoch.append(
-            [param.data.clone() for param in model.parameters()]
-        )
 
     return model, history, weight_list_per_epoch
 

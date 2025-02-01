@@ -32,34 +32,30 @@ def my_get_weights_in_conv_layers(model):
 
 def my_get_cosine_sims_filters_per_epoch(weight_list_per_epoch):
     num_layers = len(weight_list_per_epoch)
-    print(len(weight_list_per_epoch), len(weight_list_per_epoch[0]))
-    print(len(weight_list_per_epoch[0][0]))
-    num_filters = [
-        np.array(weight_list_per_epoch[0][i]).shape[1] for i in range(num_layers)
-    ]
+    num_filters = [len(weight_list_per_epoch[i][0]) for i in range(num_layers)] #function works
 
-    # num_filters = [np.array(weight_list_per_epoch[i]).shape[-1] for i in range(num_layers)]
+    print(num_filters)
     sorted_filter_pair_sum = [{} for _ in range(num_layers)]
 
     filter_pair_similarities = [
         {f"{i+1}, {j+1}": 0.0 for i, j in combinations(range(_), 2)}
         for _ in num_filters
     ]
+    # print(f"Previous Filter Pairs {filter_pair_similarities}")
 
     for layer_index in range(num_layers):
-        for epochs in weight_list_per_epoch[layer_index]:
-            epochs = torch.tensor(epochs, dtype=torch.float32)
+        for epoch_weights in weight_list_per_epoch[layer_index]:  # Each epoch's weights for this layer
             num_filter = num_filters[layer_index]
-            flattened_filters = epochs.reshape(-1, num_filter).T
-
+            # Reshape to [num_filters, -1] (each row is a flattened filter)
+            flattened_filters = epoch_weights.reshape(num_filter, -1)
+            
             normed_filters = F.normalize(flattened_filters, p=2, dim=1)
-            cosine_sim = torch.mm(normed_filters, normed_filters.T)
+            cosine_sim = torch.mm(normed_filters, normed_filters.T)  # Pairwise cosine similarities
 
             for i, j in combinations(range(num_filter), 2):
-                filter_pair_similarities[layer_index][f"{i+1}, {j+1}"] += cosine_sim[
-                    i, j
-                ].item()
+                filter_pair_similarities[layer_index][f"{i+1}, {j+1}"] += cosine_sim[i, j].item()
 
+    # Sort similarities
     for layer_index in range(num_layers):
         sorted_filter_pair_sum[layer_index] = dict(
             sorted(
@@ -206,7 +202,7 @@ class Get_Weights:
             self.weight_list[index].append(each_weight)
 
 
-def my_get_l1_norms_filters(model):
+def my_get_cosine_sims_filters(model):
     """
     Arguments:
         model:
@@ -235,42 +231,42 @@ def my_get_l1_norms_filters(model):
 
 
 def my_delete_filters(model, weight_list_per_epoch, percentage):
-    filter_pruning_indices, _ = find_pruning_indices(
-        model, weight_list_per_epoch, percentage
-    )
+    filter_pruning_indices, _ = find_pruning_indices(model, weight_list_per_epoch, percentage)
     all_conv_layers = my_get_all_conv_layers(model)
+    
+    # Convert model to list format to replace layers
+    layers = list(model.children())
 
-    for index, (layer_name, layer) in enumerate(model.named_modules()):
-        if layer in all_conv_layers:
-            prune_indices = filter_pruning_indices[index]
-            if isinstance(layer, nn.Conv2d):
-                new_conv = nn.Conv2d(
-                    in_channels=layer.in_channels,
-                    out_channels=layer.out_channels - len(prune_indices),
-                    kernel_size=layer.kernel_size,
-                    stride=layer.stride,
-                    padding=layer.padding,
-                    dilation=layer.dilation,
-                    groups=layer.groups,
-                    bias=layer.bias is not None,
-                )
-                new_conv.weight.data = torch.cat(
-                    [
-                        layer.weight.data[i].unsqueeze(0)
-                        for i in range(layer.out_channels)
-                        if i not in prune_indices
-                    ],
-                    dim=0,
-                )
-                if layer.bias is not None:
-                    new_conv.bias.data = torch.cat(
-                        [
-                            layer.bias.data[i].unsqueeze(0)
-                            for i in range(layer.out_channels)
-                            if i not in prune_indices
-                        ],
-                        dim=0,
-                    )
-                model._modules[layer_name] = new_conv
+    for layer_index in range(len(all_conv_layers)):
+        conv_idx = all_conv_layers[layer_index]
+        layer = layers[conv_idx]
+        prune_indices = filter_pruning_indices[layer_index]
 
-    return model
+        if isinstance(layer, nn.Conv2d):
+            # New Conv2d with fewer filters
+            remaining_filters = [i for i in range(layer.out_channels) if i not in prune_indices]
+            new_out_channels = len(remaining_filters)
+
+            new_conv = nn.Conv2d(
+                in_channels=layer.in_channels,
+                out_channels=new_out_channels,
+                kernel_size=layer.kernel_size,
+                stride=layer.stride,
+                padding=layer.padding,
+                dilation=layer.dilation,
+                groups=layer.groups,
+                bias=layer.bias is not None,
+            )
+
+            # Copy only the remaining filters
+            new_conv.weight.data = layer.weight.data[remaining_filters]
+            if layer.bias is not None:
+                new_conv.bias.data = layer.bias.data[remaining_filters]
+
+            # Replace the layer
+            layers[conv_idx] = new_conv
+
+    # Reconstruct the model
+    pruned_model = nn.Sequential(*layers)
+    
+    return pruned_model
