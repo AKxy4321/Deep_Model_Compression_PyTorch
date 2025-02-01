@@ -96,7 +96,8 @@ def find_pruning_indices(model, weight_list_per_epoch, first_time, percentage):
         )
         all_layer_pruning_indices.append(pruning_indices)
 
-    return all_layer_pruning_indices
+    num_filter_pairs_to_prune = int(len(filter_pairs) * percentage / 100 / 2)
+    return all_layer_pruning_indices, all_layer_filter_pairs[:num_filter_pairs_to_prune]
 
 
 def my_get_filter_pruning_indices(filter_pairs, l1_norms, prune_percentage):
