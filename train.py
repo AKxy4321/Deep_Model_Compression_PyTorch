@@ -7,6 +7,8 @@ import os
 from utils import *
 from lenet import LeNet
 
+INPUT_SHAPE = (1,1, 28,28)
+
 def optimize(model, weight_list_per_epoch, epochs, percentage, first_time):
     """
     Arguments:
@@ -178,6 +180,7 @@ def train(model, epochs, first_time, learning_rate=0.001):
     return model, history, weight_list_per_epoch
 
 def logging(model, history, log_dict=None):
+    global INPUT_SHAPE
     if log_dict is None:
         log_dict = {
             "train_loss": [],
@@ -189,19 +192,19 @@ def logging(model, history, log_dict=None):
             "filters_in_conv1": [],
             "filters_in_conv2": [],
         }
-    initial_flops = count_model_params_flops(model, True, (1, 28,28))[1]
-    print(f"Initial FLOPS: {initial_flops}")
+    initial_params, initial_flops = count_model_params_flops(model, True, INPUT_SHAPE)
+    print(f"Initial FLOPS: {initial_flops}, Initial params : {initial_params}")
 
-    best_acc_index = history["val_accuracy"].index(max(history["val_accuracy"]))
-    log_dict["train_loss"].append(history["loss"][best_acc_index])
-    log_dict["train_acc"].append(history["accuracy"][best_acc_index])
-    log_dict["val_loss"].append(history["val_loss"][best_acc_index])
-    log_dict["val_acc"].append(history["val_accuracy"][best_acc_index])
-    a, b = count_model_params_flops(model, True)
+    # best_acc_index = history["val_accuracy"].index(max(history["val_accuracy"]))
+    # log_dict["train_loss"].append(history["loss"][best_acc_index])
+    # log_dict["train_acc"].append(history["accuracy"][best_acc_index])
+    # log_dict["val_loss"].append(history["val_loss"][best_acc_index])
+    # log_dict["val_acc"].append(history["val_accuracy"][best_acc_index])
+    a, b = count_model_params_flops(model, True, INPUT_SHAPE)
     log_dict["total_params"].append(a)
     log_dict["total_flops"].append(b)
-    log_dict["filters_in_conv1"].append(model.conv1.weight.shape[0])
-    log_dict["filters_in_conv2"].append(model.conv2.weight.shape[0])
+    # log_dict["filters_in_conv1"].append(model[0].out_channels)
+    # log_dict["filters_in_conv2"].append(model[3].out_channels)
 
     print("Validation accuracy ", max(history["val_accuracy"]))
 
@@ -219,7 +222,7 @@ validation_accuracy = max(history["val_accuracy"])
 max_val_acc = validation_accuracy
 count = 0
 all_models = list()
-a, b = count_model_params_flops(model, False)
+a, b = count_model_params_flops(model, False, INPUT_SHAPE)
 print(a, b)
 
 print("Starting Pruning Process")
@@ -265,7 +268,7 @@ while validation_accuracy - max_val_acc >= -0.01:
         model = my_delete_filters(model, weight_list_per_epoch, 35, False)
         model, history, weight_list_per_epoch = train(model, 10, False)
 
-    a, b = count_model_params_flops(model, False)
+    a, b = count_model_params_flops(model, False, INPUT_SHAPE)
     print(a, b)
 
     validation_accuracy = max(history["val_accuracy"])
