@@ -220,7 +220,8 @@ def my_get_l1_norms_filters(model, first_time):
     """
     conv_layers = my_get_all_conv_layers(model, first_time)
     cosine_sums = list()
-    for index, layer in enumerate(conv_layers):
+    for index, layer_idx in enumerate(conv_layers):
+        layer = model[layer_idx]
         cosine_sums.append([])
         weights = layer.weight.data.cpu().numpy()
         num_filters = weights.shape[0]
