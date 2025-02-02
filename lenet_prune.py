@@ -246,9 +246,10 @@ print(a, b)
 
 print("STARTED PRUNING PROCESS")
 NO_PRUNING_LIMIT = 3
-initial_parameters = len(model.parameters())
+initial_parameters = sum(p.numel() for p in model.parameters())
 
 while validation_accuracy - max_val_acc >= -1:
+    current_parameters = sum(p.numel() for p in model.parameters())
     print("ITERATION {} ".format(count + 1))
     if max_val_acc < validation_accuracy:
         max_val_acc = validation_accuracy
@@ -293,7 +294,6 @@ while validation_accuracy - max_val_acc >= -1:
     a, b = count_model_params_flops(model, INPUT_SHAPE)
     print(a, b)
 
-    current_parameters = len(model.parameters())
     if current_parameters < initial_parameters:
         initial_parameters = current_parameters
         iterations_without_pruning = 0
