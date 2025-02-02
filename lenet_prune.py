@@ -245,7 +245,7 @@ a, b = count_model_params_flops(model, INPUT_SHAPE)
 print(a, b)
 
 print("STARTED PRUNING PROCESS")
-NO_PRUNING_LIMIT = 3
+NO_PRUNING_LIMIT = 8
 iterations_without_pruning = 0
 initial_parameters = sum(p.numel() for p in model.parameters())
 
