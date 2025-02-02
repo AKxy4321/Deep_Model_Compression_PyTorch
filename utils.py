@@ -247,7 +247,7 @@ def my_delete_filters(model, weight_list_per_epoch, percentage):
             # New Conv2d with fewer filters
             remaining_filters = [i for i in range(layer.out_channels) if i not in prune_indices]
             new_out_channels = len(remaining_filters)
-
+            print("prev_out_channels", prev_out_channels)
             new_conv = nn.Conv2d(
                 in_channels=prev_out_channels,
                 out_channels=new_out_channels,
@@ -260,16 +260,44 @@ def my_delete_filters(model, weight_list_per_epoch, percentage):
             )
 
             # Copy only the remaining filters
-            new_conv.weight.data = layer.weight.data[remaining_filters]
-            if layer.bias is not None:
-                new_conv.bias.data = layer.bias.data[remaining_filters]
+            # new_conv.weight.data = index_remove(layer.weight.data, 0, remaining_filters)
+            # if layer.bias is not None:
+            #     new_conv.bias.data = index_remove(layer.bias.data, 0, remaining_filters)
 
             # Replace the layer
             layers[conv_idx] = new_conv
 
             prev_out_channels = new_out_channels
+        
+        # updating the linear layer immediately after the conv layer
+        layer = layers[7]
+        # Update the in_features of the first Linear layer if necessary
+        new_in_features = prev_out_channels * 4 * 4  # Update based on the new conv output
+        new_linear = nn.Linear(in_features=new_in_features, out_features=layer.out_features, bias=layer.bias is not None)
+        layers[7] = new_linear
 
     # Reconstruct the model
     pruned_model = nn.Sequential(*layers)
     
+    print(pruned_model)
+
+    input_shape = (128, 1, 28, 28)
+    verify_shapes(pruned_model, input_shape)
     return pruned_model
+
+def index_remove(tensor, dim, select_index):
+    if tensor.is_cuda:
+        tensor = tensor.cpu()
+    size_ = list(tensor.size())
+    size_[dim] = len(select_index)
+    new_size = size_
+
+    new_tensor = torch.index_select(tensor, dim, torch.tensor(select_index))
+
+    return new_tensor
+
+def verify_shapes(model, input_shape):
+    x = torch.randn(input_shape)
+    for layer in model:
+        x = layer(x)
+        print(f"After {layer.__class__.__name__}: {x.shape}")
