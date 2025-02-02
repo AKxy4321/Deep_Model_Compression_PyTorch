@@ -18,25 +18,27 @@ def LeNet():
         nn.Conv2d(in_channels=20, out_channels=50, kernel_size=5, stride=2, bias=False),
         nn.ReLU(),
         nn.Flatten(),
-        nn.Linear(in_features=800, out_features=500),
+        nn.Linear(in_features=50 * 4 * 4, out_features=500),
         nn.ReLU(),
         nn.Linear(in_features=500, out_features=10),
         nn.Softmax(dim=1)
     )
 
+num_workers = multiprocessing.cpu_count()
+transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
+train_dataset = datasets.MNIST(".", train=True, download=True, transform=transform)
+test_dataset = datasets.MNIST(".", train=False, download=True, transform=transform)
+
+train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=128, shuffle=True, num_workers=num_workers, pin_memory=True)
+test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=128, shuffle=False, num_workers=num_workers, pin_memory=True)
+
 
 def optimize(model, weight_list_per_epoch, epochs, percentage):
-    num_workers = multiprocessing.cpu_count()
-    transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
-
-    train_dataset = datasets.MNIST(".", train=True, download=True, transform=transform)
-    test_dataset = datasets.MNIST(".", train=False, download=True, transform=transform)
-
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=128, shuffle=True, num_workers=num_workers, pin_memory=True)
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=128, shuffle=False, num_workers=num_workers, pin_memory=True)
+    global test_loader, train_loader
 
     regularizer_value = my_get_regularizer_value(model, weight_list_per_epoch, percentage)
     print("INITIAL REGULARIZER VALUE ", regularizer_value)
+
     criterion = custom_loss(lmbda=0.1, regularizer_value=regularizer_value)
     optimizer = optim.Adam(model.parameters(), lr=0.001)
 
@@ -86,16 +88,7 @@ def optimize(model, weight_list_per_epoch, epochs, percentage):
 
 
 def train(model, epochs, learning_rate=0.001):
-    num_workers = multiprocessing.cpu_count()
-    transform = transforms.Compose(
-        [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
-    )
-
-    train_dataset = datasets.MNIST(".", train=True, download=True, transform=transform)
-    test_dataset = datasets.MNIST(".", train=False, download=True, transform=transform)
-
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=128, shuffle=True, num_workers=num_workers, pin_memory=True)
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=128, shuffle=False, num_workers=num_workers, pin_memory=True)
+    global test_loader, train_loader
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
@@ -151,7 +144,33 @@ def train(model, epochs, learning_rate=0.001):
     return model, history, weight_list_per_epoch
 
 
-def logging(model, history, log_dict=None):
+def evaluate(model):
+    global test_loader
+    model.eval()
+    correct = 0
+    total = 0
+    running_loss = 0.0
+    with torch.no_grad():
+        for images, labels in test_loader:
+            outputs = model(images)
+            loss = nn.CrossEntropyLoss()(outputs, labels)
+            running_loss += loss.item()
+            correct += (outputs.argmax(1) == labels).sum().item()
+            total += labels.size(0)
+
+    val_loss = running_loss / total
+    val_accuracy = 100 * correct / total
+    print(f"Validation Accuracy: {val_accuracy:.2f}%")
+    print(f"Validation Loss: {val_loss:.4f}")
+
+    conv_indices = my_get_all_conv_layers(model)
+    weight_list_per_epoch = [[] for _ in conv_indices]
+    for i, layer_idx in enumerate(conv_indices):
+        weight_list_per_epoch[i].append(model[layer_idx].weight.data.clone().cpu())
+    return val_accuracy, val_loss, weight_list_per_epoch
+
+
+def logging(model, history=None, log_dict=None):
     global INPUT_SHAPE
     if log_dict is None:
         log_dict = {
@@ -185,25 +204,26 @@ def logging(model, history, log_dict=None):
     return log_dict
 
 model = LeNet()
+model.load_state_dict(torch.load(os.path.join(os.getcwd(), "models", "lenet_best.pth"), weights_only=True))
+print("Model Initialized and Weights Loaded")
+validation_accuracy, validation_loss, weight_list_per_epoch = evaluate(model)
 
+history = {"loss": [], "accuracy": [], "val_loss": [], "val_accuracy": []}
+history["accuracy"].append(validation_accuracy)
+history["loss"].append(validation_loss)
+history["val_accuracy"].append(validation_accuracy)
+history["val_loss"].append(validation_loss)
+log_dict = logging(model, history)
 
-print("Model Initialized")
-
-model, history, weight_list_per_epoch = train(model, 10)
-log_dict = logging(model, history, None)
-
-validation_accuracy = max(history["val_accuracy"])
 max_val_acc = validation_accuracy
 count = 0
-all_models = list()
 a, b = count_model_params_flops(model, INPUT_SHAPE)
 print(a, b)
 
 print("Starting Pruning Process")
 
-while validation_accuracy - max_val_acc >= -0.01:
+while validation_accuracy - max_val_acc >= -1:
     print("ITERATION {} ".format(count + 1))
-    all_models.append(model)
     if max_val_acc < validation_accuracy:
         max_val_acc = validation_accuracy
 
