@@ -3,7 +3,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 import multiprocessing
 import torch.nn as nn
-from tqdm import tqdm  
+from tqdm import tqdm
 import pandas as pd
 from utils import *
 import torch
@@ -11,6 +11,8 @@ import os
 
 
 INPUT_SHAPE = (1, 1, 28, 28)
+
+
 def LeNet():
     return nn.Sequential(
         nn.Conv2d(in_channels=1, out_channels=20, kernel_size=5, stride=2, bias=False),
@@ -21,34 +23,53 @@ def LeNet():
         nn.Linear(in_features=50 * 4 * 4, out_features=500),
         nn.ReLU(),
         nn.Linear(in_features=500, out_features=10),
-        nn.Softmax(dim=1)
+        nn.Softmax(dim=1),
     )
 
+
 num_workers = multiprocessing.cpu_count()
-transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
+transform = transforms.Compose(
+    [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
+)
 train_dataset = datasets.MNIST(".", train=True, download=True, transform=transform)
 test_dataset = datasets.MNIST(".", train=False, download=True, transform=transform)
 
-train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=128, shuffle=True, num_workers=num_workers, pin_memory=True)
-test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=128, shuffle=False, num_workers=num_workers, pin_memory=True)
+train_loader = torch.utils.data.DataLoader(
+    train_dataset,
+    batch_size=128,
+    shuffle=True,
+    num_workers=num_workers,
+    pin_memory=True,
+)
+test_loader = torch.utils.data.DataLoader(
+    test_dataset,
+    batch_size=128,
+    shuffle=False,
+    num_workers=num_workers,
+    pin_memory=True,
+)
 
 
 def optimize(model, weight_list_per_epoch, epochs, percentage):
     global test_loader, train_loader
 
-    regularizer_value = my_get_regularizer_value(model, weight_list_per_epoch, percentage)
+    regularizer_value = my_get_regularizer_value(
+        model, weight_list_per_epoch, percentage
+    )
     print("INITIAL REGULARIZER VALUE ", regularizer_value)
 
     criterion = custom_loss(lmbda=0.1, regularizer_value=regularizer_value)
     optimizer = optim.Adam(model.parameters(), lr=0.001)
 
     history = {"loss": [], "accuracy": [], "val_loss": [], "val_accuracy": []}
-    
+
     for epoch in range(epochs):
         model.train()
         train_loss = 0
         correct = 0
-        progress_bar = tqdm(train_loader, desc=f"Optimizing {epoch+1}/{epochs}", leave=True)
+        progress_bar = tqdm(
+            train_loader, desc=f"Optimizing {epoch+1}/{epochs}", leave=True
+        )
 
         for data, target in progress_bar:
             optimizer.zero_grad()
@@ -203,9 +224,12 @@ def logging(model, history=None, log_dict=None):
 
     return log_dict
 
+
 model = LeNet()
-model.load_state_dict(torch.load(os.path.join(os.getcwd(), "models", "lenet_best.pth"), weights_only=True))
-print("Model Initialized and Weights Loaded")
+model.load_state_dict(
+    torch.load(os.path.join(os.getcwd(), "models", "lenet_best.pth"), weights_only=True)
+)
+print("MODEL INITIALIZED AND WEIGHTS LOADED")
 validation_accuracy, validation_loss, weight_list_per_epoch = evaluate(model)
 
 history = {"loss": [], "accuracy": [], "val_loss": [], "val_accuracy": []}
@@ -220,7 +244,9 @@ count = 0
 a, b = count_model_params_flops(model, INPUT_SHAPE)
 print(a, b)
 
-print("Starting Pruning Process")
+print("STARTED PRUNING PROCESS")
+NO_PRUNING_LIMIT = 3
+initial_parameters = len(model.parameters())
 
 while validation_accuracy - max_val_acc >= -1:
     print("ITERATION {} ".format(count + 1))
@@ -267,15 +293,30 @@ while validation_accuracy - max_val_acc >= -1:
     a, b = count_model_params_flops(model, INPUT_SHAPE)
     print(a, b)
 
+    current_parameters = len(model.parameters())
+    if current_parameters < initial_parameters:
+        initial_parameters = current_parameters
+        iterations_without_pruning = 0
+    else:
+        iterations_without_pruning += 1
+
+    if iterations_without_pruning >= NO_PRUNING_LIMIT:
+        print(f"STOPPING EARLY DUE TO NO PRUNING AFTER {NO_PRUNING_LIMIT} ITERATIONS")
+        break
+
     validation_accuracy = max(history["val_accuracy"])
     log_dict = logging(model, history, log_dict)
-    print("VALIDATION ACCURACY AFTER {} ITERATIONS = {}".format(count + 1, validation_accuracy))
+    print(
+        "VALIDATION ACCURACY AFTER {} ITERATIONS = {}".format(
+            count + 1, validation_accuracy
+        )
+    )
     count += 1
 
 print(model)
 
-model, history, weight_list_per_epoch = train(model, 5, learning_rate=0.001)
+model, history, weight_list_per_epoch = train(model, 30, learning_rate=0.001)
 log_dict = logging(model, history, log_dict)
 
 log_df = pd.DataFrame(log_dict)
-log_df.to_csv(os.path.join('.', 'results', 'lenet5_2.csv'))
+log_df.to_csv(os.path.join(".", "results", "lenet5_2.csv"))

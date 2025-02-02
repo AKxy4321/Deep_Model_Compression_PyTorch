@@ -35,9 +35,7 @@ def my_get_weights_in_conv_layers(model):
 
 def my_get_cosine_sims_filters_per_epoch(weight_list_per_epoch):
     num_layers = len(weight_list_per_epoch)
-    num_filters = [
-        len(weight_list_per_epoch[i][0]) for i in range(num_layers)
-    ]  # function works
+    num_filters = [len(weight_list_per_epoch[i][0]) for i in range(num_layers)]
 
     print(num_filters)
     sorted_filter_pair_sum = [{} for _ in range(num_layers)]
@@ -46,14 +44,10 @@ def my_get_cosine_sims_filters_per_epoch(weight_list_per_epoch):
         {f"{i+1}, {j+1}": 0.0 for i, j in combinations(range(_), 2)}
         for _ in num_filters
     ]
-    # print(f"Previous Filter Pairs {filter_pair_similarities}")
 
     for layer_index in range(num_layers):
-        for epoch_weights in weight_list_per_epoch[
-            layer_index
-        ]:  # Each epoch's weights for this layer
+        for epoch_weights in weight_list_per_epoch[layer_index]:
             num_filter = num_filters[layer_index]
-            # Reshape to [num_filters, -1] (each row is a flattened filter)
             flattened_filters = epoch_weights.reshape(num_filter, -1)
 
             normed_filters = F.normalize(flattened_filters, p=2, dim=1)
@@ -66,7 +60,6 @@ def my_get_cosine_sims_filters_per_epoch(weight_list_per_epoch):
                     i, j
                 ].item()
 
-    # Sort similarities
     for layer_index in range(num_layers):
         sorted_filter_pair_sum[layer_index] = dict(
             sorted(
@@ -89,9 +82,7 @@ def find_pruning_indices(model, weight_list_per_epoch, percentage):
         filter_pairs = []
         for key in sorted_filter_pair_sum.keys():
             filter1, filter2 = map(int, key.split(","))
-            filter_pairs.append(
-                [filter1 - 1, filter2 - 1]
-            )  # Convert to zero-based index
+            filter_pairs.append([filter1 - 1, filter2 - 1])
         all_layer_filter_pairs.append(filter_pairs)
 
     l1_norm_matrix_list = l1_norms(model)
@@ -150,15 +141,13 @@ def count_model_params_flops(model, input_shape):
 
 class Get_Weights:
     def __init__(self):
-        self.weight_list = []  # Using a list of list to store weight tensors per epoch
+        self.weight_list = []
 
     def on_epoch_end(self, epoch, model):
         if epoch == 0:
             all_conv_layers = my_get_all_conv_layers(model)
             for i in range(len(all_conv_layers)):
-                self.weight_list.append(
-                    []
-                )  # appending empty lists for later appending weight tensors
+                self.weight_list.append([])
 
         for index, each_weight in enumerate(my_get_weights_in_conv_layers(model)):
             self.weight_list[index].append(each_weight)
@@ -198,7 +187,6 @@ def my_delete_filters(model, weight_list_per_epoch, percentage):
     )
     all_conv_layers = my_get_all_conv_layers(model)
 
-    # Convert model to list format to replace layers
     layers = list(model.children())
 
     prev_num_out_channels = 1
@@ -208,7 +196,6 @@ def my_delete_filters(model, weight_list_per_epoch, percentage):
         layer = layers[conv_idx]
         prune_indices = filter_pruning_indices[layer_index]
         if isinstance(layer, nn.Conv2d):
-            # New Conv2d with fewer filters
             remaining_filters = [
                 i for i in range(layer.out_channels) if i not in prune_indices
             ]
@@ -225,7 +212,6 @@ def my_delete_filters(model, weight_list_per_epoch, percentage):
                 bias=layer.bias is not None,
             )
 
-            # Copy only the remaining filters
             new_conv.weight.data = torch.index_select(
                 layer.weight.data, 0, torch.tensor(remaining_filters)
             )
@@ -237,33 +223,25 @@ def my_delete_filters(model, weight_list_per_epoch, percentage):
                     layer.bias.data, 0, torch.tensor(remaining_filters)
                 )
 
-            # Replace the layer
             print(new_conv.weight.data.shape)
             layers[conv_idx] = new_conv
 
             prev_num_out_channels = new_num_out_channels
             prev_remaining_out_channels = remaining_filters
 
-        # updating the linear layer immediately after the conv layer
     layer = layers[5]
-    # Update the in_features of the first Linear layer if necessary
-    new_in_features = (
-        prev_num_out_channels * 4 * 4
-    )  # Update based on the new conv output
+    new_in_features = prev_num_out_channels * 4 * 4
     new_linear = nn.Linear(
         in_features=new_in_features,
         out_features=layer.out_features,
         bias=layer.bias is not None,
     )
     flattened_input_features_to_keep = get_flattened_indices(remaining_filters, 4, 4)
-    previous_shape = layer.weight.data.shape
-    current_shape = new_linear.weight.data.shape
     new_linear.weight.data = torch.index_select(
         layer.weight.data, 1, torch.tensor(flattened_input_features_to_keep)
     )
     layers[5] = new_linear
 
-    # Reconstruct the model
     pruned_model = nn.Sequential(*layers)
 
     input_shape = (128, 1, 28, 28)
@@ -298,9 +276,7 @@ def my_get_regularizer_value(model, weight_list_per_epoch, percentage):
     Return:
         regularizer_value
     """
-    _, filter_pairs = find_pruning_indices(
-        model, weight_list_per_epoch, percentage
-    )
+    _, filter_pairs = find_pruning_indices(model, weight_list_per_epoch, percentage)
     l1_norms = my_get_cosine_sims_filters(model)
     regularizer_value = 0
     for layer_index, layer in enumerate(filter_pairs):
