@@ -200,7 +200,6 @@ def my_delete_filters(model, weight_list_per_epoch, percentage):
                 i for i in range(layer.out_channels) if i not in prune_indices
             ]
             new_num_out_channels = len(remaining_filters)
-            print("prev_out_channels", prev_num_out_channels)
             new_conv = nn.Conv2d(
                 in_channels=prev_num_out_channels,
                 out_channels=new_num_out_channels,
@@ -223,7 +222,7 @@ def my_delete_filters(model, weight_list_per_epoch, percentage):
                     layer.bias.data, 0, torch.tensor(remaining_filters)
                 )
 
-            print(new_conv.weight.data.shape)
+            # print(new_conv.weight.data.shape)
             layers[conv_idx] = new_conv
 
             prev_num_out_channels = new_num_out_channels
@@ -253,7 +252,7 @@ def verify_shapes(model, input_shape):
     x = torch.randn(input_shape)
     for layer in model:
         x = layer(x)
-        print(f"After {layer.__class__.__name__}: {x.shape}")
+        # print(f"After {layer.__class__.__name__}: {x.shape}")
 
 
 def get_flattened_indices(channels_to_keep, height, width):

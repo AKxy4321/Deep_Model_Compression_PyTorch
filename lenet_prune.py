@@ -246,6 +246,7 @@ print(a, b)
 
 print("STARTED PRUNING PROCESS")
 NO_PRUNING_LIMIT = 3
+iterations_without_pruning = 0
 initial_parameters = sum(p.numel() for p in model.parameters())
 
 while validation_accuracy - max_val_acc >= -1:
