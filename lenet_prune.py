@@ -1,6 +1,7 @@
 from torchvision import datasets, transforms
 import torch.nn.functional as F
 import torch.optim as optim
+import multiprocessing
 import torch.nn as nn
 from tqdm import tqdm  
 import pandas as pd
@@ -17,7 +18,7 @@ def LeNet():
         nn.Conv2d(in_channels=20, out_channels=50, kernel_size=5, stride=2, bias=False),
         nn.ReLU(),
         nn.Flatten(),
-        nn.Linear(in_features=50 * 4 * 4, out_features=500),
+        nn.Linear(in_features=800, out_features=500),
         nn.ReLU(),
         nn.Linear(in_features=500, out_features=10),
         nn.Softmax(dim=1)
@@ -25,13 +26,14 @@ def LeNet():
 
 
 def optimize(model, weight_list_per_epoch, epochs, percentage):
+    num_workers = multiprocessing.cpu_count()
     transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
 
     train_dataset = datasets.MNIST(".", train=True, download=True, transform=transform)
     test_dataset = datasets.MNIST(".", train=False, download=True, transform=transform)
 
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=128, shuffle=True)
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=128, shuffle=False)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=128, shuffle=True, num_workers=num_workers, pin_memory=True)
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=128, shuffle=False, num_workers=num_workers, pin_memory=True)
 
     regularizer_value = my_get_regularizer_value(model, weight_list_per_epoch, percentage)
     print("INITIAL REGULARIZER VALUE ", regularizer_value)
@@ -44,7 +46,7 @@ def optimize(model, weight_list_per_epoch, epochs, percentage):
         model.train()
         train_loss = 0
         correct = 0
-        progress_bar = tqdm(train_loader, desc=f"Optimizing {epoch+1}/{epochs}", leave=False)
+        progress_bar = tqdm(train_loader, desc=f"Optimizing {epoch+1}/{epochs}", leave=True)
 
         for data, target in progress_bar:
             optimizer.zero_grad()
@@ -77,12 +79,14 @@ def optimize(model, weight_list_per_epoch, epochs, percentage):
         val_accuracy = 100.0 * correct / len(test_loader.dataset)
         history["val_loss"].append(val_loss)
         history["val_accuracy"].append(val_accuracy)
+        progress_bar.set_postfix(val_loss=val_loss, val_acc=val_accuracy)
 
     print("FINAL REGULARIZER VALUE ", regularizer_value)
     return model, history
 
 
 def train(model, epochs, learning_rate=0.001):
+    num_workers = multiprocessing.cpu_count()
     transform = transforms.Compose(
         [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
     )
@@ -90,8 +94,8 @@ def train(model, epochs, learning_rate=0.001):
     train_dataset = datasets.MNIST(".", train=True, download=True, transform=transform)
     test_dataset = datasets.MNIST(".", train=False, download=True, transform=transform)
 
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=128, shuffle=True)
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=128, shuffle=False)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=128, shuffle=True, num_workers=num_workers, pin_memory=True)
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=128, shuffle=False, num_workers=num_workers, pin_memory=True)
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
@@ -105,7 +109,7 @@ def train(model, epochs, learning_rate=0.001):
         model.train()
         train_loss = 0
         correct = 0
-        progress_bar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs}", leave=False)
+        progress_bar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs}", leave=True)
 
         for data, target in progress_bar:
             optimizer.zero_grad()
@@ -142,6 +146,7 @@ def train(model, epochs, learning_rate=0.001):
         val_accuracy = 100.0 * correct / len(test_loader.dataset)
         history["val_loss"].append(val_loss)
         history["val_accuracy"].append(val_accuracy)
+        progress_bar.set_postfix(val_loss=val_loss, val_acc=val_accuracy)
 
     return model, history, weight_list_per_epoch
 
@@ -173,7 +178,7 @@ def logging(model, history, log_dict=None):
     if log_dict is not None:
         print(f"Current FLOPS: {b}, Current params : {a}")
     log_dict["filters_in_conv1"].append(model[0].out_channels)
-    log_dict["filters_in_conv2"].append(model[3].out_channels)
+    log_dict["filters_in_conv2"].append(model[2].out_channels)
 
     print("Validation accuracy ", max(history["val_accuracy"]))
 
@@ -184,7 +189,7 @@ model = LeNet()
 
 print("Model Initialized")
 
-model, history, weight_list_per_epoch = train(model, 1)
+model, history, weight_list_per_epoch = train(model, 10)
 log_dict = logging(model, history, None)
 
 validation_accuracy = max(history["val_accuracy"])
@@ -202,11 +207,11 @@ while validation_accuracy - max_val_acc >= -0.01:
     if max_val_acc < validation_accuracy:
         max_val_acc = validation_accuracy
 
+    print(f"MAX VALIDATION ACCURACY = {max_val_acc}")
+
     if count < 1:
         optimize(model, weight_list_per_epoch, 1, 5)
         model = my_delete_filters(model, weight_list_per_epoch, 5)
-        print("Model after pruning:")
-        print(model)
         model, history, weight_list_per_epoch = train(model, 1)
 
     elif count < 2:
@@ -249,7 +254,7 @@ while validation_accuracy - max_val_acc >= -0.01:
 
 print(model)
 
-model, history, weight_list_per_epoch = train(model, 60, learning_rate=0.001)
+model, history, weight_list_per_epoch = train(model, 5, learning_rate=0.001)
 log_dict = logging(model, history, log_dict)
 
 log_df = pd.DataFrame(log_dict)

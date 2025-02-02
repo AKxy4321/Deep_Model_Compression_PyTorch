@@ -198,8 +198,6 @@ def my_delete_filters(model, weight_list_per_epoch, percentage):
     )
     all_conv_layers = my_get_all_conv_layers(model)
 
-    print("model\n", model)
-
     # Convert model to list format to replace layers
     layers = list(model.children())
 
@@ -267,8 +265,6 @@ def my_delete_filters(model, weight_list_per_epoch, percentage):
 
     # Reconstruct the model
     pruned_model = nn.Sequential(*layers)
-
-    print("pruned model\n", pruned_model)
 
     input_shape = (128, 1, 28, 28)
     verify_shapes(pruned_model, input_shape)
