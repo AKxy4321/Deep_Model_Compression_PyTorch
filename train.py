@@ -1,59 +1,51 @@
-import torch
-import torch.nn as nn
-import torch.optim as optim
 from torchvision import datasets, transforms
-import pandas as pd
-import os
-from utils import *
+import torch.optim as optim
 from lenet import LeNet
+import torch.nn as nn
+from tqdm import tqdm  
+import pandas as pd
+from utils import *
+import torch
+import os
+
 
 INPUT_SHAPE = (1, 1, 28, 28)
 
-def optimize(model, weight_list_per_epoch, epochs, percentage):
-    """
-    Arguments:
-        model: initial model
-        weight_list_per_epoch: weight tensors at every epoch
-        epochs: number of epochs to be trained on custom regularizer
-        percentage: percentage of filters to be pruned
-        first_time: type bool
-    Return:
-        model: optimized model
-        history: accuracies and losses over the process
-    """
-    transform = transforms.Compose(
-        [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
-    )
-    train_dataset = datasets.MNIST(".", train=True, download=True, transform=transform)
-    test_dataset = datasets.MNIST(".", train=False, transform=transform)
-    train_loader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=128, shuffle=True
-    )
-    test_loader = torch.utils.data.DataLoader(
-        test_dataset, batch_size=128, shuffle=False
-    )
 
-    regularizer_value = my_get_regularizer_value(
-        model, weight_list_per_epoch, percentage
-    )
+def optimize(model, weight_list_per_epoch, epochs, percentage):
+    transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
+
+    train_dataset = datasets.MNIST(".", train=True, download=True, transform=transform)
+    test_dataset = datasets.MNIST(".", train=False, download=True, transform=transform)
+
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=128, shuffle=True)
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=128, shuffle=False)
+
+    regularizer_value = my_get_regularizer_value(model, weight_list_per_epoch, percentage)
     print("INITIAL REGULARIZER VALUE ", regularizer_value)
     criterion = custom_loss(lmbda=0.1, regularizer_value=regularizer_value)
     optimizer = optim.Adam(model.parameters(), lr=0.001)
 
     history = {"loss": [], "accuracy": [], "val_loss": [], "val_accuracy": []}
+    
     for epoch in range(epochs):
         model.train()
         train_loss = 0
         correct = 0
-        for data, target in train_loader:
+        progress_bar = tqdm(train_loader, desc=f"Optimizing {epoch+1}/{epochs}", leave=False)
+
+        for data, target in progress_bar:
             optimizer.zero_grad()
             output = model(data)
             loss = criterion(target, output)
             loss.backward()
             optimizer.step()
+
             train_loss += loss.item()
             pred = output.argmax(dim=1, keepdim=True)
             correct += pred.eq(target.view_as(pred)).sum().item()
+            progress_bar.set_postfix(loss=train_loss / len(train_loader.dataset))
+
         train_loss /= len(train_loader.dataset)
         accuracy = 100.0 * correct / len(train_loader.dataset)
         history["loss"].append(train_loss)
@@ -68,6 +60,7 @@ def optimize(model, weight_list_per_epoch, epochs, percentage):
                 val_loss += criterion(target, output).item()
                 pred = output.argmax(dim=1, keepdim=True)
                 correct += pred.eq(target.view_as(pred)).sum().item()
+
         val_loss /= len(test_loader.dataset)
         val_accuracy = 100.0 * correct / len(test_loader.dataset)
         history["val_loss"].append(val_loss)
@@ -77,62 +70,16 @@ def optimize(model, weight_list_per_epoch, epochs, percentage):
     return model, history
 
 
-def my_get_regularizer_value(model, weight_list_per_epoch, percentage):
-    """
-    Arguments:
-        model: initial model
-        weight_list_per_epoch: weight tensors at every epoch
-        percentage: percentage of filter to be pruned
-        first_time: type bool
-    Return:
-        regularizer_value
-    """
-    _, filter_pairs = find_pruning_indices(
-        model, weight_list_per_epoch, percentage
-    )
-    l1_norms = my_get_cosine_sims_filters(model)
-    regularizer_value = 0
-    for layer_index, layer in enumerate(filter_pairs):
-        for episode in layer:
-            regularizer_value += abs(
-                l1_norms[layer_index][episode[1]] - l1_norms[layer_index][episode[0]]
-            )  # Sum of abs differences between the episodes in all layers
-    regularizer_value = np.exp(regularizer_value)
-    print(regularizer_value)
-    return regularizer_value
-
-
-def custom_loss(lmbda, regularizer_value):
-    def loss(y_true, y_pred):
-        return F.cross_entropy(y_pred, y_true) + lmbda * regularizer_value
-
-    return loss
-
-
 def train(model, epochs, learning_rate=0.001):
-    """
-    Arguments:
-        model: model to be trained
-        epochs: number of epochs to be trained
-        first_time: boolean indicating if it's the first time training
-    Return:
-        model: trained/fine-tuned model
-        history: accuracies and losses
-        weight_list_per_epoch: all weight tensors per epoch in a list
-    """
-
     transform = transforms.Compose(
         [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
     )
 
     train_dataset = datasets.MNIST(".", train=True, download=True, transform=transform)
-    test_dataset = datasets.MNIST(".", train=False, transform=transform)
-    train_loader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=128, shuffle=True
-    )
-    test_loader = torch.utils.data.DataLoader(
-        test_dataset, batch_size=128, shuffle=False
-    )
+    test_dataset = datasets.MNIST(".", train=False, download=True, transform=transform)
+
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=128, shuffle=True)
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=128, shuffle=False)
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
@@ -140,29 +87,34 @@ def train(model, epochs, learning_rate=0.001):
     history = {"loss": [], "accuracy": [], "val_loss": [], "val_accuracy": []}
     conv_indices = my_get_all_conv_layers(model)
     weight_list_per_epoch = [[] for _ in conv_indices]
+
     print("Training model")
     for epoch in range(epochs):
         model.train()
         train_loss = 0
         correct = 0
-        for data, target in train_loader:
+        progress_bar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs}", leave=False)
+
+        for data, target in progress_bar:
             optimizer.zero_grad()
             output = model(data)
             loss = criterion(output, target)
             loss.backward()
             optimizer.step()
+
             train_loss += loss.item()
             pred = output.argmax(dim=1, keepdim=True)
             correct += pred.eq(target.view_as(pred)).sum().item()
+
+            progress_bar.set_postfix(loss=train_loss / len(train_loader.dataset))
+
         train_loss /= len(train_loader.dataset)
         accuracy = 100.0 * correct / len(train_loader.dataset)
         history["loss"].append(train_loss)
         history["accuracy"].append(accuracy)
 
         for i, layer_idx in enumerate(conv_indices):
-            layer = model[layer_idx]
-            weight = layer.weight.data.clone().cpu()  # Ensure tensor is on CPU
-            weight_list_per_epoch[i].append(weight)
+            weight_list_per_epoch[i].append(model[layer_idx].weight.data.clone().cpu())
 
         model.eval()
         val_loss = 0
@@ -173,12 +125,14 @@ def train(model, epochs, learning_rate=0.001):
                 val_loss += criterion(output, target).item()
                 pred = output.argmax(dim=1, keepdim=True)
                 correct += pred.eq(target.view_as(pred)).sum().item()
+
         val_loss /= len(test_loader.dataset)
         val_accuracy = 100.0 * correct / len(test_loader.dataset)
         history["val_loss"].append(val_loss)
         history["val_accuracy"].append(val_accuracy)
 
     return model, history, weight_list_per_epoch
+
 
 def logging(model, history, log_dict=None):
     global INPUT_SHAPE
@@ -284,7 +238,7 @@ while validation_accuracy - max_val_acc >= -0.01:
 print(model)
 
 model, history, weight_list_per_epoch = train(model, 60, learning_rate=0.001)
-log_dict, max_val_acc, count, all_models = logging(model, history, log_dict)
+log_dict = logging(model, history, log_dict)
 
 log_df = pd.DataFrame(log_dict)
 log_df.to_csv(os.path.join('.', 'results', 'lenet5_2.csv'))

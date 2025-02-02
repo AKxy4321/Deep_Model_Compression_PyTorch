@@ -1,11 +1,12 @@
+from sklearn.metrics.pairwise import cosine_similarity
+from torchvision import datasets, transforms
+from torchprofile import profile_macs
 from itertools import combinations
+import torch.nn.functional as F
+import torch.optim as optim
+import torch.nn as nn
 import numpy as np
 import torch
-import torch.nn.functional as F
-from sklearn.metrics.pairwise import cosine_similarity
-import torch.optim as optim
-from torchvision import datasets, transforms
-import torch.nn as nn
 
 
 def my_get_all_conv_layers(model):
@@ -132,53 +133,6 @@ def l1_norms(model):
         l1_norms_list.append(layer_l1_norms)
 
     return l1_norms_list
-
-
-# def count_model_params_flops(model, input_shape):
-#     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-#     total_flops = 0
-
-#     for i, layer in enumerate(model.children()):
-#         if isinstance(layer, (nn.Conv1d, nn.Conv2d, nn.Conv3d)):
-#             flops = conv_flops(layer)
-#             print(
-#                 i,
-#                 layer.__class__.__name__,
-#                 sum(p.numel() for p in layer.parameters() if p.requires_grad),
-#                 flops,
-#             )
-#             total_flops += flops
-#         elif isinstance(layer, nn.Linear):
-#             flops = dense_flops(layer)
-#             print(
-#                 i,
-#                 layer.__class__.__name__,
-#                 sum(p.numel() for p in layer.parameters() if p.requires_grad),
-#                 flops,
-#             )
-#             total_flops += flops
-
-#     return total_params, int(total_flops)
-
-# def dense_flops(layer):
-#     output_channels = layer.out_features
-#     input_channels = layer.in_features
-#     return 2 * input_channels * output_channels
-
-# def conv_flops(layer:nn.Conv2d):
-#     conv_output_shape(layer.)
-#     output_size = layer.shape[
-#         2
-#     ]  # Assuming output shape is (batch_size, channels, height, width)
-#     kernel_shape = layer.weight.shape
-#     return (
-#         2
-#         * (output_size**2)
-#         * (kernel_shape[2] ** 2)
-#         * kernel_shape[1]
-#         * kernel_shape[0]
-#     )
-from torchprofile import profile_macs
 
 
 def count_parameters(model):
@@ -336,3 +290,35 @@ def get_flattened_indices(channels_to_keep, height, width):
                 flattened_index = channel_idx * height * width + h * width + w
                 flattened_indices.append(flattened_index)
     return flattened_indices
+
+
+def my_get_regularizer_value(model, weight_list_per_epoch, percentage):
+    """
+    Arguments:
+        model: initial model
+        weight_list_per_epoch: weight tensors at every epoch
+        percentage: percentage of filter to be pruned
+        first_time: type bool
+    Return:
+        regularizer_value
+    """
+    _, filter_pairs = find_pruning_indices(
+        model, weight_list_per_epoch, percentage
+    )
+    l1_norms = my_get_cosine_sims_filters(model)
+    regularizer_value = 0
+    for layer_index, layer in enumerate(filter_pairs):
+        for episode in layer:
+            regularizer_value += abs(
+                l1_norms[layer_index][episode[1]] - l1_norms[layer_index][episode[0]]
+            )  # Sum of abs differences between the episodes in all layers
+    regularizer_value = np.exp(regularizer_value)
+    print(regularizer_value)
+    return regularizer_value
+
+
+def custom_loss(lmbda, regularizer_value):
+    def loss(y_true, y_pred):
+        return F.cross_entropy(y_pred, y_true) + lmbda * regularizer_value
+
+    return loss
