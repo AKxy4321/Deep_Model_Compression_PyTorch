@@ -237,20 +237,20 @@ def my_delete_filters(model, weight_list_per_epoch, percentage):
     # Convert model to list format to replace layers
     layers = list(model.children())
 
-    prev_out_channels = 1
+    prev_num_out_channels = 1
+    prev_remaining_out_channels = [0]
     for layer_index in range(len(all_conv_layers)):
         conv_idx = all_conv_layers[layer_index]
         layer = layers[conv_idx]
         prune_indices = filter_pruning_indices[layer_index]
-        
         if isinstance(layer, nn.Conv2d):
             # New Conv2d with fewer filters
             remaining_filters = [i for i in range(layer.out_channels) if i not in prune_indices]
-            new_out_channels = len(remaining_filters)
-            print("prev_out_channels", prev_out_channels)
+            new_num_out_channels = len(remaining_filters)
+            print("prev_out_channels", prev_num_out_channels)
             new_conv = nn.Conv2d(
-                in_channels=prev_out_channels,
-                out_channels=new_out_channels,
+                in_channels=prev_num_out_channels,
+                out_channels=new_num_out_channels,
                 kernel_size=layer.kernel_size,
                 stride=layer.stride,
                 padding=layer.padding,
@@ -260,21 +260,25 @@ def my_delete_filters(model, weight_list_per_epoch, percentage):
             )
 
             # Copy only the remaining filters
-            # new_conv.weight.data = index_remove(layer.weight.data, 0, remaining_filters)
-            # if layer.bias is not None:
-            #     new_conv.bias.data = index_remove(layer.bias.data, 0, remaining_filters)
+            new_conv.weight.data = torch.index_select(layer.weight.data, 0, torch.tensor(remaining_filters))
+            new_conv.weight.data = torch.index_select(new_conv.weight.data, 1, torch.tensor(prev_remaining_out_channels))
+            if layer.bias is not None:
+                new_conv.bias.data = torch.index_select(layer.bias.data, 0, torch.tensor(remaining_filters))
 
             # Replace the layer
+            print(new_conv.weight.data.shape)
             layers[conv_idx] = new_conv
 
-            prev_out_channels = new_out_channels
+            prev_num_out_channels = new_num_out_channels
+            prev_remaining_out_channels = remaining_filters
         
         # updating the linear layer immediately after the conv layer
-        layer = layers[7]
-        # Update the in_features of the first Linear layer if necessary
-        new_in_features = prev_out_channels * 4 * 4  # Update based on the new conv output
-        new_linear = nn.Linear(in_features=new_in_features, out_features=layer.out_features, bias=layer.bias is not None)
-        layers[7] = new_linear
+    layer = layers[7]
+    # Update the in_features of the first Linear layer if necessary
+    new_in_features = prev_num_out_channels * 4 * 4  # Update based on the new conv output
+    new_linear = nn.Linear(in_features=new_in_features, out_features=layer.out_features, bias=layer.bias is not None)
+    # new_linear.weight.data = torch.index_select(layer.weight.data, 0, torch.tensor(remaining_filters))
+    layers[7] = new_linear
 
     # Reconstruct the model
     pruned_model = nn.Sequential(*layers)
@@ -284,17 +288,6 @@ def my_delete_filters(model, weight_list_per_epoch, percentage):
     input_shape = (128, 1, 28, 28)
     verify_shapes(pruned_model, input_shape)
     return pruned_model
-
-def index_remove(tensor, dim, select_index):
-    if tensor.is_cuda:
-        tensor = tensor.cpu()
-    size_ = list(tensor.size())
-    size_[dim] = len(select_index)
-    new_size = size_
-
-    new_tensor = torch.index_select(tensor, dim, torch.tensor(select_index))
-
-    return new_tensor
 
 def verify_shapes(model, input_shape):
     x = torch.randn(input_shape)
