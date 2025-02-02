@@ -303,12 +303,12 @@ def my_delete_filters(model, weight_list_per_epoch, percentage):
         out_features=layer.out_features,
         bias=layer.bias is not None,
     )
-    # flattened_input_features_to_keep = get_flattened_indices(remaining_filters, 4, 4)
-    # previous_shape = layer.weight.data.shape
-    # current_shape = new_linear.weight.data.shape
-    # new_linear.weight.data = torch.index_select(
-    #     layer.weight.data, 0, torch.tensor(flattened_input_features_to_keep)
-    # )
+    flattened_input_features_to_keep = get_flattened_indices(remaining_filters, 4, 4)
+    previous_shape = layer.weight.data.shape
+    current_shape = new_linear.weight.data.shape
+    new_linear.weight.data = torch.index_select(
+        layer.weight.data, 1, torch.tensor(flattened_input_features_to_keep)
+    )
     layers[5] = new_linear
 
     # Reconstruct the model
