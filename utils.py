@@ -293,7 +293,7 @@ def my_delete_filters(model, weight_list_per_epoch, percentage):
             prev_remaining_out_channels = remaining_filters
 
         # updating the linear layer immediately after the conv layer
-    layer = layers[7]
+    layer = layers[5]
     # Update the in_features of the first Linear layer if necessary
     new_in_features = (
         prev_num_out_channels * 4 * 4
@@ -309,7 +309,7 @@ def my_delete_filters(model, weight_list_per_epoch, percentage):
     # new_linear.weight.data = torch.index_select(
     #     layer.weight.data, 0, torch.tensor(flattened_input_features_to_keep)
     # )
-    layers[7] = new_linear
+    layers[5] = new_linear
 
     # Reconstruct the model
     pruned_model = nn.Sequential(*layers)
