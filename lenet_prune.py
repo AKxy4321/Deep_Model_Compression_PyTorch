@@ -226,9 +226,9 @@ def logging(model, history=None, log_dict=None):
 
 
 model = LeNet()
-model.load_state_dict(
-    torch.load(os.path.join(os.getcwd(), "models", "lenet_best.pth"), weights_only=True)
-)
+# model.load_state_dict(
+#     torch.load(os.path.join(os.getcwd(), "models", "lenet_best.pth"), weights_only=True)
+# )
 print("MODEL INITIALIZED AND WEIGHTS LOADED")
 validation_accuracy, validation_loss, weight_list_per_epoch = evaluate(model)
 

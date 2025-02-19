@@ -7,6 +7,7 @@ import torch.optim as optim
 import torch.nn as nn
 import numpy as np
 import torch
+from torchpruner.pruner import Pruner
 
 
 def my_get_all_conv_layers(model):
@@ -181,11 +182,14 @@ def my_get_cosine_sims_filters(model):
     return cosine_sums
 
 
-def my_delete_filters(model, weight_list_per_epoch, percentage):
+def my_delete_filters(model, weight_list_per_epoch, percentage, input_shape=(1,28,28)):
     filter_pruning_indices, _ = find_pruning_indices(
         model, weight_list_per_epoch, percentage
     )
     all_conv_layers = my_get_all_conv_layers(model)
+    pruner = Pruner(model, input_size=input_shape, device=next(model.parameters()).device)
+    # (c,w,h)
+
 
     layers = list(model.children())
 
@@ -196,52 +200,60 @@ def my_delete_filters(model, weight_list_per_epoch, percentage):
         layer = layers[conv_idx]
         prune_indices = filter_pruning_indices[layer_index]
         if isinstance(layer, nn.Conv2d):
-            remaining_filters = [
-                i for i in range(layer.out_channels) if i not in prune_indices
-            ]
-            new_num_out_channels = len(remaining_filters)
-            new_conv = nn.Conv2d(
-                in_channels=prev_num_out_channels,
-                out_channels=new_num_out_channels,
-                kernel_size=layer.kernel_size,
-                stride=layer.stride,
-                padding=layer.padding,
-                dilation=layer.dilation,
-                groups=layer.groups,
-                bias=layer.bias is not None,
-            )
 
-            new_conv.weight.data = torch.index_select(
-                layer.weight.data, 0, torch.tensor(remaining_filters)
-            )
-            new_conv.weight.data = torch.index_select(
-                new_conv.weight.data, 1, torch.tensor(prev_remaining_out_channels)
-            )
-            if layer.bias is not None:
-                new_conv.bias.data = torch.index_select(
-                    layer.bias.data, 0, torch.tensor(remaining_filters)
-                )
+            cascading_modules = [] # layers[l_idx] for l_idx in range(conv_idx+1, len(layers) if layer_index==(len(all_conv_layers)-1) else all_conv_layers[layer_index+1]) if (isinstance(layer, nn.Conv2d) or isinstance(layer,nn.Linear))]
+            for l_idx in range(conv_idx+1,len(layers)):
+                if isinstance(layers[l_idx], nn.Conv2d) or isinstance(layers[l_idx], nn.Linear):
+                    cascading_modules.append(layers[l_idx])
+                    break
+            pruner.prune_model(layer, indices=prune_indices, cascading_modules=cascading_modules)
+            # remaining_filters = [
+            #     i for i in range(layer.out_channels) if i not in prune_indices
+            # ]
+            # new_num_out_channels = len(remaining_filters)
+            # new_conv = nn.Conv2d(
+            #     in_channels=prev_num_out_channels,
+            #     out_channels=new_num_out_channels,
+            #     kernel_size=layer.kernel_size,
+            #     stride=layer.stride,
+            #     padding=layer.padding,
+            #     dilation=layer.dilation,
+            #     groups=layer.groups,
+            #     bias=layer.bias is not None,
+            # )
 
-            # print(new_conv.weight.data.shape)
-            layers[conv_idx] = new_conv
+            # new_conv.weight.data = torch.index_select(
+            #     layer.weight.data, 0, torch.tensor(remaining_filters)
+            # )
+            # new_conv.weight.data = torch.index_select(
+            #     new_conv.weight.data, 1, torch.tensor(prev_remaining_out_channels)
+            # )
+            # if layer.bias is not None:
+            #     new_conv.bias.data = torch.index_select(
+            #         layer.bias.data, 0, torch.tensor(remaining_filters)
+            #     )
 
-            prev_num_out_channels = new_num_out_channels
-            prev_remaining_out_channels = remaining_filters
+            # # print(new_conv.weight.data.shape)
+            # layers[conv_idx] = new_conv
 
-    layer = layers[5]
-    new_in_features = prev_num_out_channels * 4 * 4
-    new_linear = nn.Linear(
-        in_features=new_in_features,
-        out_features=layer.out_features,
-        bias=layer.bias is not None,
-    )
-    flattened_input_features_to_keep = get_flattened_indices(remaining_filters, 4, 4)
-    new_linear.weight.data = torch.index_select(
-        layer.weight.data, 1, torch.tensor(flattened_input_features_to_keep)
-    )
-    layers[5] = new_linear
+            # prev_num_out_channels = new_num_out_channels
+            # prev_remaining_out_channels = remaining_filters
 
-    pruned_model = nn.Sequential(*layers)
+    # layer = layers[5]
+    # new_in_features = prev_num_out_channels * 4 * 4
+    # new_linear = nn.Linear(
+    #     in_features=new_in_features,
+    #     out_features=layer.out_features,
+    #     bias=layer.bias is not None,
+    # )
+    # flattened_input_features_to_keep = get_flattened_indices(remaining_filters, 4, 4)
+    # new_linear.weight.data = torch.index_select(
+    #     layer.weight.data, 1, torch.tensor(flattened_input_features_to_keep)
+    # )
+    # layers[5] = new_linear
+
+    # pruned_model = nn.Sequential(*layers)
+    pruned_model = model
 
     input_shape = (128, 1, 28, 28)
     verify_shapes(pruned_model, input_shape)
