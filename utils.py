@@ -1,5 +1,6 @@
 from sklearn.metrics.pairwise import cosine_similarity
 from torchvision import datasets, transforms
+from torchpruner.pruner import Pruner
 from torchprofile import profile_macs
 from itertools import combinations
 import torch.nn.functional as F
@@ -7,7 +8,6 @@ import torch.optim as optim
 import torch.nn as nn
 import numpy as np
 import torch
-from torchpruner.pruner import Pruner
 
 
 def my_get_all_conv_layers(model):
