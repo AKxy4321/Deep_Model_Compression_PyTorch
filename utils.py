@@ -187,10 +187,11 @@ def my_delete_filters(model, weight_list_per_epoch, percentage, input_shape=(1,2
         model, weight_list_per_epoch, percentage
     )
     all_conv_layers = my_get_all_conv_layers(model)
+
+    if len(all_conv_layers) == 0:
+        return
     pruner = Pruner(model, input_size=input_shape, device=next(model.parameters()).device)
     # (c,w,h)
-
-
     layers = list(model.children())
 
     prev_num_out_channels = 1
@@ -207,6 +208,7 @@ def my_delete_filters(model, weight_list_per_epoch, percentage, input_shape=(1,2
                     cascading_modules.append(layers[l_idx])
                     break
             pruner.prune_model(layer, indices=prune_indices, cascading_modules=cascading_modules)
+
             # remaining_filters = [
             #     i for i in range(layer.out_channels) if i not in prune_indices
             # ]
