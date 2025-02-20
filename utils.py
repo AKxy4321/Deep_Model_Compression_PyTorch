@@ -73,7 +73,7 @@ def my_get_cosine_sims_filters_per_epoch(weight_list_per_epoch):
     return sorted_filter_pair_sum
 
 
-def find_pruning_indices(model, weight_list_per_epoch, percentage):
+def find_pruning_indices(model, weight_list_per_epoch, num_filter_pairs_to_prune_per_layer:list):
     sorted_filter_pair_sums = my_get_cosine_sims_filters_per_epoch(
         weight_list_per_epoch
     )
@@ -90,17 +90,17 @@ def find_pruning_indices(model, weight_list_per_epoch, percentage):
     all_layer_pruning_indices = []
 
     for layer_index, filter_pairs in enumerate(all_layer_filter_pairs):
+        z = len(filter_pairs)
+        tot_filters_in_layer = int(round((1+((1+8*z)**0.5))/2))
         pruning_indices = my_get_filter_pruning_indices(
-            filter_pairs, l1_norm_matrix_list[layer_index], percentage
+            filter_pairs, l1_norm_matrix_list[layer_index], min(num_filter_pairs_to_prune_per_layer[layer_index], tot_filters_in_layer-1)
         )
         all_layer_pruning_indices.append(pruning_indices)
 
-    num_filter_pairs_to_prune = int(len(filter_pairs) * percentage / 100 / 2)
-    return all_layer_pruning_indices, all_layer_filter_pairs[:num_filter_pairs_to_prune]
+    return all_layer_pruning_indices, all_layer_filter_pairs
 
 
-def my_get_filter_pruning_indices(filter_pairs, l1_norms, prune_percentage):
-    num_filter_pairs_to_prune = int(len(filter_pairs) * prune_percentage / 100 / 2)
+def my_get_filter_pruning_indices(filter_pairs, l1_norms, num_filter_pairs_to_prune):
     filter_pruning_indices = set()
 
     for i in range(num_filter_pairs_to_prune):
@@ -182,9 +182,9 @@ def my_get_cosine_sims_filters(model):
     return cosine_sums
 
 
-def my_delete_filters(model, weight_list_per_epoch, percentage, input_shape=(1,28,28)):
+def my_delete_filters(model, weight_list_per_epoch, num_filter_pairs_to_prune_per_layer:list, input_shape=(1,28,28)):
     filter_pruning_indices, _ = find_pruning_indices(
-        model, weight_list_per_epoch, percentage
+        model, weight_list_per_epoch, num_filter_pairs_to_prune_per_layer
     )
     all_conv_layers = my_get_all_conv_layers(model)
 
@@ -280,7 +280,7 @@ def get_flattened_indices(channels_to_keep, height, width):
     return flattened_indices
 
 
-def my_get_regularizer_value(model, weight_list_per_epoch, percentage):
+def my_get_regularizer_value(model, weight_list_per_epoch, num_filter_pairs_to_prune_per_layer:list):
     """
     Arguments:
         model: initial model
@@ -290,7 +290,7 @@ def my_get_regularizer_value(model, weight_list_per_epoch, percentage):
     Return:
         regularizer_value
     """
-    _, filter_pairs = find_pruning_indices(model, weight_list_per_epoch, percentage)
+    _, filter_pairs = find_pruning_indices(model, weight_list_per_epoch, num_filter_pairs_to_prune_per_layer)
     l1_norms = my_get_cosine_sims_filters(model)
     regularizer_value = 0
     for layer_index, layer in enumerate(filter_pairs):

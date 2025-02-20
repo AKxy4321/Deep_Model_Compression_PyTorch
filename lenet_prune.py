@@ -50,11 +50,11 @@ test_loader = torch.utils.data.DataLoader(
 )
 
 
-def optimize(model, weight_list_per_epoch, epochs, percentage):
+def optimize(model, weight_list_per_epoch, epochs, num_filter_pairs_to_prune_per_layer):
     global test_loader, train_loader
 
     regularizer_value = my_get_regularizer_value(
-        model, weight_list_per_epoch, percentage
+        model, weight_list_per_epoch, num_filter_pairs_to_prune_per_layer
     )
     print("INITIAL REGULARIZER VALUE ", regularizer_value)
 
@@ -258,38 +258,38 @@ while validation_accuracy - max_val_acc >= -1:
     print(f"MAX VALIDATION ACCURACY = {max_val_acc}")
 
     if count < 1:
-        optimize(model, weight_list_per_epoch, 1, 5)
-        model = my_delete_filters(model, weight_list_per_epoch, 5)
+        optimize(model, weight_list_per_epoch, 1, [2,4])
+        model = my_delete_filters(model, weight_list_per_epoch, [2,4])
         model, history, weight_list_per_epoch = train(model, 1)
 
     elif count < 2:
-        optimize(model, weight_list_per_epoch, 1, 7)
-        model = my_delete_filters(model, weight_list_per_epoch, 7)
+        optimize(model, weight_list_per_epoch, 1, [2,4])
+        model = my_delete_filters(model, weight_list_per_epoch, [2,4])
         model, history, weight_list_per_epoch = train(model, 1)
 
     elif count < 3:
-        optimize(model, weight_list_per_epoch, 1, 9)
-        model = my_delete_filters(model, weight_list_per_epoch, 9)
+        optimize(model, weight_list_per_epoch, 1, [2,4])
+        model = my_delete_filters(model, weight_list_per_epoch, [2,4])
         model, history, weight_list_per_epoch = train(model, 1)
 
     elif count < 4:
-        optimize(model, weight_list_per_epoch, 1, 11)
-        model = my_delete_filters(model, weight_list_per_epoch, 11)
+        optimize(model, weight_list_per_epoch, 1, [2,4])
+        model = my_delete_filters(model, weight_list_per_epoch, [2,4])
         model, history, weight_list_per_epoch = train(model, 1)
 
     elif count < 5:
-        optimize(model, weight_list_per_epoch, 1, 13)
-        model = my_delete_filters(model, weight_list_per_epoch, 13)
+        optimize(model, weight_list_per_epoch, 1, [2,4])
+        model = my_delete_filters(model, weight_list_per_epoch, [2,4])
         model, history, weight_list_per_epoch = train(model, 1)
 
     elif count < 10:
-        optimize(model, weight_list_per_epoch, 1, 15)
-        model = my_delete_filters(model, weight_list_per_epoch, 15)
+        optimize(model, weight_list_per_epoch, 1, [2,4])
+        model = my_delete_filters(model, weight_list_per_epoch, [2,4])
         model, history, weight_list_per_epoch = train(model, 1)
 
     else:
-        optimize(model, weight_list_per_epoch, 10, 35)
-        model = my_delete_filters(model, weight_list_per_epoch, 35)
+        optimize(model, weight_list_per_epoch, 10, [2,4])
+        model = my_delete_filters(model, weight_list_per_epoch, [2,4])
         model, history, weight_list_per_epoch = train(model, 10)
 
     a, b = count_model_params_flops(model, INPUT_SHAPE)
