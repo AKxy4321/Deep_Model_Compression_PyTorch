@@ -1,0 +1,3 @@
+- Use vgg instead
+- use cifar
+- search for more pytorch pruning libraries for subsequent layer pruning

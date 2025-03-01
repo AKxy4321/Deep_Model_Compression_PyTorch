@@ -191,7 +191,7 @@ def my_delete_filters(model, weight_list_per_epoch, num_filter_pairs_to_prune_pe
 
     pruner = Pruner(model, input_size=input_shape, device=next(model.parameters()).device)
     # (c,w,h)
-    layers = list(model.children())
+    layers = list(pruner.model.children())
 
     prev_num_out_channels = 1
     prev_remaining_out_channels = [0]
@@ -256,7 +256,7 @@ def my_delete_filters(model, weight_list_per_epoch, num_filter_pairs_to_prune_pe
     # layers[5] = new_linear
 
     # pruned_model = nn.Sequential(*layers)
-    pruned_model = model
+    pruned_model = pruner.model
 
     input_shape = (128, 1, 28, 28)
     verify_shapes(pruned_model, input_shape)

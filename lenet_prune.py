@@ -261,6 +261,7 @@ while validation_accuracy - max_val_acc >= -1:
         optimize(model, weight_list_per_epoch, 1, [2,4])
         model = my_delete_filters(model, weight_list_per_epoch, [2,4])
         model, history, weight_list_per_epoch = train(model, 1)
+        print(model)
 
     elif count < 2:
         optimize(model, weight_list_per_epoch, 1, [2,4])
