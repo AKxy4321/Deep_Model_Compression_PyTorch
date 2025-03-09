@@ -1,6 +1,4 @@
 from sklearn.metrics.pairwise import cosine_similarity
-from torchvision import datasets, transforms
-from torchpruner.pruner import Pruner
 from torchprofile import profile_macs
 from itertools import combinations
 import torch.nn.functional as F
@@ -8,6 +6,8 @@ import torch.optim as optim
 import torch.nn as nn
 import numpy as np
 import torch
+import torch_pruning as tp
+
 
 
 def my_get_all_conv_layers(model):
@@ -182,19 +182,14 @@ def my_get_cosine_sims_filters(model):
     return cosine_sums
 
 
-def my_delete_filters(model, weight_list_per_epoch, num_filter_pairs_to_prune_per_layer:list, input_shape=(1,28,28)):
+def my_delete_filters(model, weight_list_per_epoch, num_filter_pairs_to_prune_per_layer:list, input_shape=(1,28,28), DG=None):
     filter_pruning_indices, _ = find_pruning_indices(
         model, weight_list_per_epoch, num_filter_pairs_to_prune_per_layer
     )
     all_conv_layers = my_get_all_conv_layers(model)
 
+    layers = list(model.children())
 
-    pruner = Pruner(model, input_size=input_shape, device=next(model.parameters()).device)
-    # (c,w,h)
-    layers = list(pruner.model.children())
-
-    prev_num_out_channels = 1
-    prev_remaining_out_channels = [0]
     for layer_index in range(len(all_conv_layers)):
         conv_idx = all_conv_layers[layer_index]
         layer = layers[conv_idx]
@@ -202,65 +197,16 @@ def my_delete_filters(model, weight_list_per_epoch, num_filter_pairs_to_prune_pe
         if len(prune_indices)==0:
             continue
         if isinstance(layer, nn.Conv2d):
-
-            cascading_modules = [] # layers[l_idx] for l_idx in range(conv_idx+1, len(layers) if layer_index==(len(all_conv_layers)-1) else all_conv_layers[layer_index+1]) if (isinstance(layer, nn.Conv2d) or isinstance(layer,nn.Linear))]
-            for l_idx in range(conv_idx+1,len(layers)):
-                if isinstance(layers[l_idx], nn.Conv2d) or isinstance(layers[l_idx], nn.Linear):
-                    cascading_modules.append(layers[l_idx])
-                    break
-            pruner.prune_model(layer, indices=prune_indices, cascading_modules=cascading_modules)
-
-            # remaining_filters = [
-            #     i for i in range(layer.out_channels) if i not in prune_indices
-            # ]
-            # new_num_out_channels = len(remaining_filters)
-            # new_conv = nn.Conv2d(
-            #     in_channels=prev_num_out_channels,
-            #     out_channels=new_num_out_channels,
-            #     kernel_size=layer.kernel_size,
-            #     stride=layer.stride,
-            #     padding=layer.padding,
-            #     dilation=layer.dilation,
-            #     groups=layer.groups,
-            #     bias=layer.bias is not None,
-            # )
-
-            # new_conv.weight.data = torch.index_select(
-            #     layer.weight.data, 0, torch.tensor(remaining_filters)
-            # )
-            # new_conv.weight.data = torch.index_select(
-            #     new_conv.weight.data, 1, torch.tensor(prev_remaining_out_channels)
-            # )
-            # if layer.bias is not None:
-            #     new_conv.bias.data = torch.index_select(
-            #         layer.bias.data, 0, torch.tensor(remaining_filters)
-            #     )
-
-            # # print(new_conv.weight.data.shape)
-            # layers[conv_idx] = new_conv
-
-            # prev_num_out_channels = new_num_out_channels
-            # prev_remaining_out_channels = remaining_filters
-
-    # layer = layers[5]
-    # new_in_features = prev_num_out_channels * 4 * 4
-    # new_linear = nn.Linear(
-    #     in_features=new_in_features,
-    #     out_features=layer.out_features,
-    #     bias=layer.bias is not None,
-    # )
-    # flattened_input_features_to_keep = get_flattened_indices(remaining_filters, 4, 4)
-    # new_linear.weight.data = torch.index_select(
-    #     layer.weight.data, 1, torch.tensor(flattened_input_features_to_keep)
-    # )
-    # layers[5] = new_linear
-
-    # pruned_model = nn.Sequential(*layers)
-    pruned_model = pruner.model
+            group = DG.get_pruning_group(layer, tp.prune_conv_out_channels, idxs=prune_indices)
+            if DG.check_pruning_group(group):  # Avoid over-pruning
+                print("pruning group")
+                group.prune()
+            else:
+                print("invalid to prune more")
 
     input_shape = (128, 1, 28, 28)
-    verify_shapes(pruned_model, input_shape)
-    return pruned_model
+    verify_shapes(model, input_shape)
+    return model
 
 
 def verify_shapes(model, input_shape):

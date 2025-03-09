@@ -6,4 +6,4 @@ matplotlib
 scikit-learn
 torchprofile
 tqdm
-# pip install -e git+https://github.com/marcoancona/TorchPruner.git#egg=torchpruner
+torch-pruning

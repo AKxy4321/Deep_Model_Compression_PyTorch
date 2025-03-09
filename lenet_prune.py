@@ -8,6 +8,7 @@ import pandas as pd
 from utils import *
 import torch
 import os
+import torch_pruning as tp
 
 
 INPUT_SHAPE = (1, 1, 28, 28)
@@ -229,6 +230,8 @@ model = LeNet()
 # model.load_state_dict(
 #     torch.load(os.path.join(os.getcwd(), "models", "lenet_best.pth"), weights_only=True)
 # )
+DG = tp.DependencyGraph().build_dependency(model, example_inputs=torch.randn(INPUT_SHAPE))
+
 print("MODEL INITIALIZED AND WEIGHTS LOADED")
 validation_accuracy, validation_loss, weight_list_per_epoch = evaluate(model)
 
@@ -259,38 +262,38 @@ while validation_accuracy - max_val_acc >= -1:
 
     if count < 1:
         optimize(model, weight_list_per_epoch, 1, [2,4])
-        model = my_delete_filters(model, weight_list_per_epoch, [2,4])
+        model = my_delete_filters(model, weight_list_per_epoch, [2,4], DG=DG)
         model, history, weight_list_per_epoch = train(model, 1)
         print(model)
 
     elif count < 2:
         optimize(model, weight_list_per_epoch, 1, [2,4])
-        model = my_delete_filters(model, weight_list_per_epoch, [2,4])
+        model = my_delete_filters(model, weight_list_per_epoch, [2,4],DG=DG)
         model, history, weight_list_per_epoch = train(model, 1)
 
     elif count < 3:
         optimize(model, weight_list_per_epoch, 1, [2,4])
-        model = my_delete_filters(model, weight_list_per_epoch, [2,4])
+        model = my_delete_filters(model, weight_list_per_epoch, [2,4],DG=DG)
         model, history, weight_list_per_epoch = train(model, 1)
 
     elif count < 4:
         optimize(model, weight_list_per_epoch, 1, [2,4])
-        model = my_delete_filters(model, weight_list_per_epoch, [2,4])
+        model = my_delete_filters(model, weight_list_per_epoch, [2,4],DG=DG)
         model, history, weight_list_per_epoch = train(model, 1)
 
     elif count < 5:
         optimize(model, weight_list_per_epoch, 1, [2,4])
-        model = my_delete_filters(model, weight_list_per_epoch, [2,4])
+        model = my_delete_filters(model, weight_list_per_epoch, [2,4],DG=DG)
         model, history, weight_list_per_epoch = train(model, 1)
 
     elif count < 10:
         optimize(model, weight_list_per_epoch, 1, [2,4])
-        model = my_delete_filters(model, weight_list_per_epoch, [2,4])
+        model = my_delete_filters(model, weight_list_per_epoch, [2,4],DG=DG)
         model, history, weight_list_per_epoch = train(model, 1)
 
     else:
         optimize(model, weight_list_per_epoch, 10, [2,4])
-        model = my_delete_filters(model, weight_list_per_epoch, [2,4])
+        model = my_delete_filters(model, weight_list_per_epoch, [2,4],DG=DG)
         model, history, weight_list_per_epoch = train(model, 10)
 
     a, b = count_model_params_flops(model, INPUT_SHAPE)
