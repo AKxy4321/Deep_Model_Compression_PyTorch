@@ -9,7 +9,6 @@ import torch
 import torch_pruning as tp
 
 
-
 def my_get_all_conv_layers(model):
     all_conv_layers = []
 
@@ -237,12 +236,12 @@ def my_get_regularizer_value(model, weight_list_per_epoch, num_filter_pairs_to_p
         regularizer_value
     """
     _, filter_pairs = find_pruning_indices(model, weight_list_per_epoch, num_filter_pairs_to_prune_per_layer)
-    l1_norms = my_get_cosine_sims_filters(model)
+    cosine_sims = my_get_cosine_sims_filters(model)
     regularizer_value = 0
     for layer_index, layer in enumerate(filter_pairs):
         for episode in layer:
             regularizer_value += abs(
-                l1_norms[layer_index][episode[1]] - l1_norms[layer_index][episode[0]]
+                cosine_sims[layer_index][episode[1]] - cosine_sims[layer_index][episode[0]]
             )  # Sum of abs differences between the episodes in all layers
     regularizer_value = np.exp(regularizer_value)
     print(regularizer_value)
