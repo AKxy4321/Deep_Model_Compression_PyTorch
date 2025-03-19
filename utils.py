@@ -72,7 +72,9 @@ def my_get_cosine_sims_filters_per_epoch(weight_list_per_epoch):
     return sorted_filter_pair_sum
 
 
-def find_pruning_indices(model, weight_list_per_epoch, num_filter_pairs_to_prune_per_layer:list):
+def find_pruning_indices(
+    model, weight_list_per_epoch, num_filter_pairs_to_prune_per_layer: list
+):
     sorted_filter_pair_sums = my_get_cosine_sims_filters_per_epoch(
         weight_list_per_epoch
     )
@@ -90,9 +92,14 @@ def find_pruning_indices(model, weight_list_per_epoch, num_filter_pairs_to_prune
 
     for layer_index, filter_pairs in enumerate(all_layer_filter_pairs):
         z = len(filter_pairs)
-        tot_filters_in_layer = int(round((1+((1+8*z)**0.5))/2))
+        tot_filters_in_layer = int(round((1 + ((1 + 8 * z) ** 0.5)) / 2))
         pruning_indices = my_get_filter_pruning_indices(
-            filter_pairs, l1_norm_matrix_list[layer_index], min(num_filter_pairs_to_prune_per_layer[layer_index], tot_filters_in_layer-1)
+            filter_pairs,
+            l1_norm_matrix_list[layer_index],
+            min(
+                num_filter_pairs_to_prune_per_layer[layer_index],
+                tot_filters_in_layer - 1,
+            ),
         )
         all_layer_pruning_indices.append(pruning_indices)
 
@@ -181,7 +188,13 @@ def my_get_cosine_sims_filters(model):
     return cosine_sums
 
 
-def my_delete_filters(model, weight_list_per_epoch, num_filter_pairs_to_prune_per_layer:list, input_shape=(1,28,28), DG=None):
+def my_delete_filters(
+    model,
+    weight_list_per_epoch,
+    num_filter_pairs_to_prune_per_layer: list,
+    input_shape=(1, 28, 28),
+    DG=None,
+):
     filter_pruning_indices, _ = find_pruning_indices(
         model, weight_list_per_epoch, num_filter_pairs_to_prune_per_layer
     )
@@ -193,10 +206,12 @@ def my_delete_filters(model, weight_list_per_epoch, num_filter_pairs_to_prune_pe
         conv_idx = all_conv_layers[layer_index]
         layer = layers[conv_idx]
         prune_indices = filter_pruning_indices[layer_index]
-        if len(prune_indices)==0:
+        if len(prune_indices) == 0:
             continue
         if isinstance(layer, nn.Conv2d):
-            group = DG.get_pruning_group(layer, tp.prune_conv_out_channels, idxs=prune_indices)
+            group = DG.get_pruning_group(
+                layer, tp.prune_conv_out_channels, idxs=prune_indices
+            )
             if DG.check_pruning_group(group):  # Avoid over-pruning
                 print("pruning group")
                 group.prune()
@@ -225,7 +240,9 @@ def get_flattened_indices(channels_to_keep, height, width):
     return flattened_indices
 
 
-def my_get_regularizer_value(model, weight_list_per_epoch, num_filter_pairs_to_prune_per_layer:list):
+def my_get_regularizer_value(
+    model, weight_list_per_epoch, num_filter_pairs_to_prune_per_layer: list
+):
     """
     Arguments:
         model: initial model
@@ -235,13 +252,16 @@ def my_get_regularizer_value(model, weight_list_per_epoch, num_filter_pairs_to_p
     Return:
         regularizer_value
     """
-    _, filter_pairs = find_pruning_indices(model, weight_list_per_epoch, num_filter_pairs_to_prune_per_layer)
+    _, filter_pairs = find_pruning_indices(
+        model, weight_list_per_epoch, num_filter_pairs_to_prune_per_layer
+    )
     cosine_sims = my_get_cosine_sims_filters(model)
     regularizer_value = 0
     for layer_index, layer in enumerate(filter_pairs):
         for episode in layer:
             regularizer_value += abs(
-                cosine_sims[layer_index][episode[1]] - cosine_sims[layer_index][episode[0]]
+                cosine_sims[layer_index][episode[1]]
+                - cosine_sims[layer_index][episode[0]]
             )  # Sum of abs differences between the episodes in all layers
     regularizer_value = np.exp(regularizer_value)
     print(regularizer_value)

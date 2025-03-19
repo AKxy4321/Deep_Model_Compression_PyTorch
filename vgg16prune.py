@@ -65,8 +65,12 @@ import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 
 transform = transforms.Compose([transforms.ToTensor()])
-train_dataset = datasets.CIFAR10("./data", train=True, download=True, transform=transform)
-test_dataset = datasets.CIFAR10("./data", train=False, download=True, transform=transform)
+train_dataset = datasets.CIFAR10(
+    "./data", train=True, download=True, transform=transform
+)
+test_dataset = datasets.CIFAR10(
+    "./data", train=False, download=True, transform=transform
+)
 
 train_loader = torch.utils.data.DataLoader(
     train_dataset,
@@ -300,8 +304,11 @@ while validation_accuracy - max_val_acc >= -1:
             model, weight_list_per_epoch, 1, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
         )
         model = my_delete_filters(
-            model, weight_list_per_epoch, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2], DG=DG,
-            input_shape=(INPUT_SHAPE[1], INPUT_SHAPE[2], INPUT_SHAPE[3])
+            model,
+            weight_list_per_epoch,
+            [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+            DG=DG,
+            input_shape=(INPUT_SHAPE[1], INPUT_SHAPE[2], INPUT_SHAPE[3]),
         )
         model, history, weight_list_per_epoch = train(model, 1)
         print(model)
@@ -311,8 +318,11 @@ while validation_accuracy - max_val_acc >= -1:
             model, weight_list_per_epoch, 1, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
         )
         model = my_delete_filters(
-            model, weight_list_per_epoch, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2], DG=DG,
-            input_shape=(INPUT_SHAPE[1], INPUT_SHAPE[2], INPUT_SHAPE[3])
+            model,
+            weight_list_per_epoch,
+            [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+            DG=DG,
+            input_shape=(INPUT_SHAPE[1], INPUT_SHAPE[2], INPUT_SHAPE[3]),
         )
         model, history, weight_list_per_epoch = train(model, 1)
 
@@ -321,8 +331,11 @@ while validation_accuracy - max_val_acc >= -1:
             model, weight_list_per_epoch, 1, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
         )
         model = my_delete_filters(
-            model, weight_list_per_epoch, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2], DG=DG,
-            input_shape=(INPUT_SHAPE[1], INPUT_SHAPE[2], INPUT_SHAPE[3])
+            model,
+            weight_list_per_epoch,
+            [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+            DG=DG,
+            input_shape=(INPUT_SHAPE[1], INPUT_SHAPE[2], INPUT_SHAPE[3]),
         )
         model, history, weight_list_per_epoch = train(model, 1)
 
@@ -331,8 +344,11 @@ while validation_accuracy - max_val_acc >= -1:
             model, weight_list_per_epoch, 1, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
         )
         model = my_delete_filters(
-            model, weight_list_per_epoch, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2], DG=DG,
-            input_shape=(INPUT_SHAPE[1], INPUT_SHAPE[2], INPUT_SHAPE[3])
+            model,
+            weight_list_per_epoch,
+            [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+            DG=DG,
+            input_shape=(INPUT_SHAPE[1], INPUT_SHAPE[2], INPUT_SHAPE[3]),
         )
         model, history, weight_list_per_epoch = train(model, 1)
 
@@ -341,8 +357,11 @@ while validation_accuracy - max_val_acc >= -1:
             model, weight_list_per_epoch, 1, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
         )
         model = my_delete_filters(
-            model, weight_list_per_epoch, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2], DG=DG,
-            input_shape=(INPUT_SHAPE[1], INPUT_SHAPE[2], INPUT_SHAPE[3])
+            model,
+            weight_list_per_epoch,
+            [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+            DG=DG,
+            input_shape=(INPUT_SHAPE[1], INPUT_SHAPE[2], INPUT_SHAPE[3]),
         )
         model, history, weight_list_per_epoch = train(model, 1)
 
@@ -351,8 +370,11 @@ while validation_accuracy - max_val_acc >= -1:
             model, weight_list_per_epoch, 1, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
         )
         model = my_delete_filters(
-            model, weight_list_per_epoch, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2], DG=DG,
-            input_shape=(INPUT_SHAPE[1], INPUT_SHAPE[2], INPUT_SHAPE[3])
+            model,
+            weight_list_per_epoch,
+            [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+            DG=DG,
+            input_shape=(INPUT_SHAPE[1], INPUT_SHAPE[2], INPUT_SHAPE[3]),
         )
         model, history, weight_list_per_epoch = train(model, 1)
 
@@ -361,8 +383,11 @@ while validation_accuracy - max_val_acc >= -1:
             model, weight_list_per_epoch, 10, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
         )
         model = my_delete_filters(
-            model, weight_list_per_epoch, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2], DG=DG,
-            input_shape=(INPUT_SHAPE[1], INPUT_SHAPE[2], INPUT_SHAPE[3])
+            model,
+            weight_list_per_epoch,
+            [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+            DG=DG,
+            input_shape=(INPUT_SHAPE[1], INPUT_SHAPE[2], INPUT_SHAPE[3]),
         )
         model, history, weight_list_per_epoch = train(model, 10)
 
