@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import os
 
+
 def conv3x3(in_planes, out_planes, stride=1, groups=1, dilation=1):
     """3x3 convolution with padding"""
     return nn.Conv2d(
@@ -204,19 +205,23 @@ def _resnet(arch, block, layers, pretrained, progress, device, **kwargs):
     model = ResNet(block, layers, **kwargs)
     if pretrained:
         script_dir = os.path.dirname(__file__)
-        state_dict = torch.load(
-            script_dir + "/state_dicts/" + arch + ".pt", map_location=device
-        )
+        state_dict = torch.load(os.path.join(script_dir, "models", "resnet50.pt"), weights_only=True)
         model.load_state_dict(state_dict)
     return model
 
 
-def resnet50(pretrained=False, progress=True, device="cpu", **kwargs):
+def resnet50(pretrained=True, progress=True, **kwargs):
     """Constructs a ResNet-50 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     return _resnet(
         "resnet50", Bottleneck, [3, 4, 6, 3], pretrained, progress, device, **kwargs
     )
+
+
+if __name__ == "__main__":
+    model = resnet50()
+    print("Success")
