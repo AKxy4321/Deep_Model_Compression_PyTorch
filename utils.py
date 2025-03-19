@@ -9,7 +9,7 @@ import torch
 import torch_pruning as tp
 
 
-def my_get_all_conv_layers(model):
+def get_all_conv_layers(model):
     all_conv_layers = []
 
     all_conv_layers = [
@@ -19,13 +19,13 @@ def my_get_all_conv_layers(model):
     return all_conv_layers
 
 
-def my_get_all_dense_layers(model):
+def get_all_dense_layers(model):
     return [i for i, layer in enumerate(model) if isinstance(layer, nn.Linear)]
 
 
-def my_get_weights_in_conv_layers(model):
+def get_weights_in_conv_layers(model):
     weights = []
-    all_conv_layers = my_get_all_conv_layers(model)
+    all_conv_layers = get_all_conv_layers(model)
 
     for i in all_conv_layers:
         weights.append(list(model.children())[i].weight.data)
@@ -33,7 +33,7 @@ def my_get_weights_in_conv_layers(model):
     return weights
 
 
-def my_get_cosine_sims_filters_per_epoch(weight_list_per_epoch):
+def get_cosine_sims_filters_per_epoch(weight_list_per_epoch):
     num_layers = len(weight_list_per_epoch)
     num_filters = [len(weight_list_per_epoch[i][0]) for i in range(num_layers)]
 
@@ -75,9 +75,7 @@ def my_get_cosine_sims_filters_per_epoch(weight_list_per_epoch):
 def find_pruning_indices(
     model, weight_list_per_epoch, num_filter_pairs_to_prune_per_layer: list
 ):
-    sorted_filter_pair_sums = my_get_cosine_sims_filters_per_epoch(
-        weight_list_per_epoch
-    )
+    sorted_filter_pair_sums = get_cosine_sims_filters_per_epoch(weight_list_per_epoch)
     all_layer_filter_pairs = []
 
     for layer_index, sorted_filter_pair_sum in enumerate(sorted_filter_pair_sums):
@@ -87,13 +85,13 @@ def find_pruning_indices(
             filter_pairs.append([filter1 - 1, filter2 - 1])
         all_layer_filter_pairs.append(filter_pairs)
 
-    l1_norm_matrix_list = l1_norms(model)
+    l1_norm_matrix_list = get_l1_norms(model)
     all_layer_pruning_indices = []
 
     for layer_index, filter_pairs in enumerate(all_layer_filter_pairs):
         z = len(filter_pairs)
         tot_filters_in_layer = int(round((1 + ((1 + 8 * z) ** 0.5)) / 2))
-        pruning_indices = my_get_filter_pruning_indices(
+        pruning_indices = get_filter_pruning_indices(
             filter_pairs,
             l1_norm_matrix_list[layer_index],
             min(
@@ -106,7 +104,7 @@ def find_pruning_indices(
     return all_layer_pruning_indices, all_layer_filter_pairs
 
 
-def my_get_filter_pruning_indices(filter_pairs, l1_norms, num_filter_pairs_to_prune):
+def get_filter_pruning_indices(filter_pairs, l1_norms, num_filter_pairs_to_prune):
     filter_pruning_indices = set()
 
     for i in range(num_filter_pairs_to_prune):
@@ -119,8 +117,8 @@ def my_get_filter_pruning_indices(filter_pairs, l1_norms, num_filter_pairs_to_pr
     return list(filter_pruning_indices)
 
 
-def l1_norms(model):
-    conv_layers = my_get_all_conv_layers(model)
+def get_l1_norms(model):
+    conv_layers = get_all_conv_layers(model)
     l1_norms_list = []
 
     for layer_index in conv_layers:
@@ -152,26 +150,16 @@ class Get_Weights:
 
     def on_epoch_end(self, epoch, model):
         if epoch == 0:
-            all_conv_layers = my_get_all_conv_layers(model)
+            all_conv_layers = get_all_conv_layers(model)
             for i in range(len(all_conv_layers)):
                 self.weight_list.append([])
 
-        for index, each_weight in enumerate(my_get_weights_in_conv_layers(model)):
+        for index, each_weight in enumerate(get_weights_in_conv_layers(model)):
             self.weight_list[index].append(each_weight)
 
 
-def my_get_cosine_sims_filters(model):
-    """
-    Arguments:
-        model:
-
-        first_time : type boolean
-            first_time = True => model is not pruned
-            first_time = False => model is pruned
-        Return:
-            l1_norms of all filters of every layer as a list
-    """
-    conv_layers = my_get_all_conv_layers(model)
+def get_cosine_sims_filters(model):
+    conv_layers = get_all_conv_layers(model)
     cosine_sums = list()
     for index, layer_idx in enumerate(conv_layers):
         layer = model[layer_idx]
@@ -188,17 +176,20 @@ def my_get_cosine_sims_filters(model):
     return cosine_sums
 
 
-def my_delete_filters(
+def delete_filters(
     model,
     weight_list_per_epoch,
     num_filter_pairs_to_prune_per_layer: list,
-    input_shape=(1, 28, 28),
+    input_shape=None,
     DG=None,
 ):
+    if input_shape is None:
+        print("Error: Input shape not defined")
+
     filter_pruning_indices, _ = find_pruning_indices(
         model, weight_list_per_epoch, num_filter_pairs_to_prune_per_layer
     )
-    all_conv_layers = my_get_all_conv_layers(model)
+    all_conv_layers = get_all_conv_layers(model)
 
     layers = list(model.children())
 
@@ -218,7 +209,6 @@ def my_delete_filters(
             else:
                 print("invalid to prune more")
 
-    input_shape = (128, 1, 28, 28)
     verify_shapes(model, input_shape)
     return model
 
@@ -240,22 +230,13 @@ def get_flattened_indices(channels_to_keep, height, width):
     return flattened_indices
 
 
-def my_get_regularizer_value(
+def get_regularizer_value(
     model, weight_list_per_epoch, num_filter_pairs_to_prune_per_layer: list
 ):
-    """
-    Arguments:
-        model: initial model
-        weight_list_per_epoch: weight tensors at every epoch
-        percentage: percentage of filter to be pruned
-        first_time: type bool
-    Return:
-        regularizer_value
-    """
     _, filter_pairs = find_pruning_indices(
         model, weight_list_per_epoch, num_filter_pairs_to_prune_per_layer
     )
-    cosine_sims = my_get_cosine_sims_filters(model)
+    cosine_sims = get_cosine_sims_filters(model)
     regularizer_value = 0
     for layer_index, layer in enumerate(filter_pairs):
         for episode in layer:

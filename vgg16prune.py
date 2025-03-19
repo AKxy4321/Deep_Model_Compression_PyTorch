@@ -1,6 +1,7 @@
 from torchvision import datasets, transforms
 import torch.nn.functional as F
 import torch.optim as optim
+import torch_pruning as tp
 import multiprocessing
 import torch.nn as nn
 from tqdm import tqdm
@@ -8,11 +9,11 @@ import pandas as pd
 from utils import *
 import torch
 import os
-import torch_pruning as tp
 
 
-INPUT_SHAPE = (1, 3, 32, 32)
-
+BATCH_SIZE = 128
+INPUT_SHAPE = (BATCH_SIZE, 3, 32, 32)
+NO_PRUNING_LIMIT = 8
 
 def VGG16():
     return nn.Sequential(
@@ -61,9 +62,6 @@ def VGG16():
 
 
 num_workers = multiprocessing.cpu_count()
-import torchvision.datasets as datasets
-import torchvision.transforms as transforms
-
 transform = transforms.Compose([transforms.ToTensor()])
 train_dataset = datasets.CIFAR10(
     "./data", train=True, download=True, transform=transform
@@ -74,14 +72,14 @@ test_dataset = datasets.CIFAR10(
 
 train_loader = torch.utils.data.DataLoader(
     train_dataset,
-    batch_size=128,
+    batch_size=BATCH_SIZE,
     shuffle=True,
     num_workers=num_workers,
     pin_memory=True,
 )
 test_loader = torch.utils.data.DataLoader(
     test_dataset,
-    batch_size=128,
+    batch_size=BATCH_SIZE,
     shuffle=False,
     num_workers=num_workers,
     pin_memory=True,
@@ -91,7 +89,7 @@ test_loader = torch.utils.data.DataLoader(
 def optimize(model, weight_list_per_epoch, epochs, num_filter_pairs_to_prune_per_layer):
     global test_loader, train_loader
 
-    regularizer_value = my_get_regularizer_value(
+    regularizer_value = get_regularizer_value(
         model, weight_list_per_epoch, num_filter_pairs_to_prune_per_layer
     )
     print("INITIAL REGULARIZER VALUE ", regularizer_value)
@@ -153,7 +151,7 @@ def train(model, epochs, learning_rate=0.001):
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
     history = {"loss": [], "accuracy": [], "val_loss": [], "val_accuracy": []}
-    conv_indices = my_get_all_conv_layers(model)
+    conv_indices = get_all_conv_layers(model)
     weight_list_per_epoch = [[] for _ in conv_indices]
 
     print("Training model")
@@ -222,7 +220,7 @@ def evaluate(model):
     print(f"Validation Accuracy: {val_accuracy:.2f}%")
     print(f"Validation Loss: {val_loss:.4f}")
 
-    conv_indices = my_get_all_conv_layers(model)
+    conv_indices = get_all_conv_layers(model)
     weight_list_per_epoch = [[] for _ in conv_indices]
     for i, layer_idx in enumerate(conv_indices):
         weight_list_per_epoch[i].append(model[layer_idx].weight.data.clone().cpu())
@@ -287,7 +285,7 @@ a, b = count_model_params_flops(model, INPUT_SHAPE)
 print(a, b)
 
 print("STARTED PRUNING PROCESS")
-NO_PRUNING_LIMIT = 8
+
 iterations_without_pruning = 0
 initial_parameters = sum(p.numel() for p in model.parameters())
 
@@ -303,12 +301,12 @@ while validation_accuracy - max_val_acc >= -1:
         optimize(
             model, weight_list_per_epoch, 1, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
         )
-        model = my_delete_filters(
+        model = delete_filters(
             model,
             weight_list_per_epoch,
             [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
             DG=DG,
-            input_shape=(INPUT_SHAPE[1], INPUT_SHAPE[2], INPUT_SHAPE[3]),
+            input_shape=INPUT_SHAPE,
         )
         model, history, weight_list_per_epoch = train(model, 1)
         print(model)
@@ -317,12 +315,12 @@ while validation_accuracy - max_val_acc >= -1:
         optimize(
             model, weight_list_per_epoch, 1, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
         )
-        model = my_delete_filters(
+        model = delete_filters(
             model,
             weight_list_per_epoch,
             [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
             DG=DG,
-            input_shape=(INPUT_SHAPE[1], INPUT_SHAPE[2], INPUT_SHAPE[3]),
+            input_shape=INPUT_SHAPE,
         )
         model, history, weight_list_per_epoch = train(model, 1)
 
@@ -330,12 +328,12 @@ while validation_accuracy - max_val_acc >= -1:
         optimize(
             model, weight_list_per_epoch, 1, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
         )
-        model = my_delete_filters(
+        model = delete_filters(
             model,
             weight_list_per_epoch,
             [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
             DG=DG,
-            input_shape=(INPUT_SHAPE[1], INPUT_SHAPE[2], INPUT_SHAPE[3]),
+            input_shape=INPUT_SHAPE,
         )
         model, history, weight_list_per_epoch = train(model, 1)
 
@@ -343,12 +341,12 @@ while validation_accuracy - max_val_acc >= -1:
         optimize(
             model, weight_list_per_epoch, 1, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
         )
-        model = my_delete_filters(
+        model = delete_filters(
             model,
             weight_list_per_epoch,
             [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
             DG=DG,
-            input_shape=(INPUT_SHAPE[1], INPUT_SHAPE[2], INPUT_SHAPE[3]),
+            input_shape=INPUT_SHAPE,
         )
         model, history, weight_list_per_epoch = train(model, 1)
 
@@ -356,12 +354,12 @@ while validation_accuracy - max_val_acc >= -1:
         optimize(
             model, weight_list_per_epoch, 1, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
         )
-        model = my_delete_filters(
+        model = delete_filters(
             model,
             weight_list_per_epoch,
             [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
             DG=DG,
-            input_shape=(INPUT_SHAPE[1], INPUT_SHAPE[2], INPUT_SHAPE[3]),
+            input_shape=INPUT_SHAPE,
         )
         model, history, weight_list_per_epoch = train(model, 1)
 
@@ -369,12 +367,12 @@ while validation_accuracy - max_val_acc >= -1:
         optimize(
             model, weight_list_per_epoch, 1, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
         )
-        model = my_delete_filters(
+        model = delete_filters(
             model,
             weight_list_per_epoch,
             [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
             DG=DG,
-            input_shape=(INPUT_SHAPE[1], INPUT_SHAPE[2], INPUT_SHAPE[3]),
+            input_shape=INPUT_SHAPE,
         )
         model, history, weight_list_per_epoch = train(model, 1)
 
@@ -382,12 +380,12 @@ while validation_accuracy - max_val_acc >= -1:
         optimize(
             model, weight_list_per_epoch, 10, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
         )
-        model = my_delete_filters(
+        model = delete_filters(
             model,
             weight_list_per_epoch,
             [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
             DG=DG,
-            input_shape=(INPUT_SHAPE[1], INPUT_SHAPE[2], INPUT_SHAPE[3]),
+            input_shape=INPUT_SHAPE,
         )
         model, history, weight_list_per_epoch = train(model, 10)
 
