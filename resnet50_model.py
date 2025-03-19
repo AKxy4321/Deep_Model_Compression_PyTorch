@@ -220,8 +220,3 @@ def resnet50(pretrained=True, progress=True, **kwargs):
     return _resnet(
         "resnet50", Bottleneck, [3, 4, 6, 3], pretrained, progress, device, **kwargs
     )
-
-
-if __name__ == "__main__":
-    model = resnet50()
-    print("Success")
