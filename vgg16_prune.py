@@ -418,4 +418,4 @@ model, history, weight_list_per_epoch = train(model, 30, learning_rate=0.001)
 log_dict = logging(model, history, log_dict)
 
 log_df = pd.DataFrame(log_dict)
-log_df.to_csv(os.path.join(".", "results", "vgg16_mnist.csv"))
+log_df.to_csv(os.path.join(".", "results", "vgg16_cifar10.csv"))
