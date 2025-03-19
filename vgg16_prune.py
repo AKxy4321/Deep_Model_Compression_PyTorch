@@ -14,6 +14,7 @@ import os
 BATCH_SIZE = 128
 INPUT_SHAPE = (BATCH_SIZE, 3, 32, 32)
 NO_PRUNING_LIMIT = 8
+PRUNE_PER_LAYER = [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
 
 def VGG16():
     return nn.Sequential(
@@ -299,12 +300,12 @@ while validation_accuracy - max_val_acc >= -1:
 
     if count < 1:
         optimize(
-            model, weight_list_per_epoch, 1, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+            model, weight_list_per_epoch, 1, PRUNE_PER_LAYER
         )
         model = delete_filters(
             model,
             weight_list_per_epoch,
-            [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+            PRUNE_PER_LAYER,
             DG=DG,
             input_shape=INPUT_SHAPE,
         )
@@ -313,12 +314,12 @@ while validation_accuracy - max_val_acc >= -1:
 
     elif count < 2:
         optimize(
-            model, weight_list_per_epoch, 1, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+            model, weight_list_per_epoch, 1, PRUNE_PER_LAYER
         )
         model = delete_filters(
             model,
             weight_list_per_epoch,
-            [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+            PRUNE_PER_LAYER,
             DG=DG,
             input_shape=INPUT_SHAPE,
         )
@@ -326,12 +327,12 @@ while validation_accuracy - max_val_acc >= -1:
 
     elif count < 3:
         optimize(
-            model, weight_list_per_epoch, 1, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+            model, weight_list_per_epoch, 1, PRUNE_PER_LAYER
         )
         model = delete_filters(
             model,
             weight_list_per_epoch,
-            [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+            PRUNE_PER_LAYER,
             DG=DG,
             input_shape=INPUT_SHAPE,
         )
@@ -339,12 +340,12 @@ while validation_accuracy - max_val_acc >= -1:
 
     elif count < 4:
         optimize(
-            model, weight_list_per_epoch, 1, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+            model, weight_list_per_epoch, 1, PRUNE_PER_LAYER
         )
         model = delete_filters(
             model,
             weight_list_per_epoch,
-            [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+            PRUNE_PER_LAYER,
             DG=DG,
             input_shape=INPUT_SHAPE,
         )
@@ -352,12 +353,12 @@ while validation_accuracy - max_val_acc >= -1:
 
     elif count < 5:
         optimize(
-            model, weight_list_per_epoch, 1, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+            model, weight_list_per_epoch, 1, PRUNE_PER_LAYER
         )
         model = delete_filters(
             model,
             weight_list_per_epoch,
-            [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+            PRUNE_PER_LAYER,
             DG=DG,
             input_shape=INPUT_SHAPE,
         )
@@ -365,12 +366,12 @@ while validation_accuracy - max_val_acc >= -1:
 
     elif count < 10:
         optimize(
-            model, weight_list_per_epoch, 1, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+            model, weight_list_per_epoch, 1, PRUNE_PER_LAYER
         )
         model = delete_filters(
             model,
             weight_list_per_epoch,
-            [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+            PRUNE_PER_LAYER,
             DG=DG,
             input_shape=INPUT_SHAPE,
         )
@@ -378,12 +379,12 @@ while validation_accuracy - max_val_acc >= -1:
 
     else:
         optimize(
-            model, weight_list_per_epoch, 10, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+            model, weight_list_per_epoch, 10, PRUNE_PER_LAYER
         )
         model = delete_filters(
             model,
             weight_list_per_epoch,
-            [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+            PRUNE_PER_LAYER,
             DG=DG,
             input_shape=INPUT_SHAPE,
         )

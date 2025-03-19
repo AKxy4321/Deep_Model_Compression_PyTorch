@@ -14,7 +14,7 @@ import os
 BATCH_SIZE = 128
 INPUT_SHAPE = (BATCH_SIZE, 1, 28, 28)
 NO_PRUNING_LIMIT = 8
-
+PRUNE_PER_LAYER = [2, 4]
 
 def LeNet():
     return nn.Sequential(
@@ -265,52 +265,52 @@ while validation_accuracy - max_val_acc >= -1:
     print(f"MAX VALIDATION ACCURACY = {max_val_acc}")
 
     if count < 1:
-        optimize(model, weight_list_per_epoch, 1, [2, 4])
+        optimize(model, weight_list_per_epoch, 1, PRUNE_PER_LAYER)
         model = delete_filters(
-            model, weight_list_per_epoch, [2, 4], input_shape=INPUT_SHAPE, DG=DG
+            model, weight_list_per_epoch, PRUNE_PER_LAYER, input_shape=INPUT_SHAPE, DG=DG
         )
         model, history, weight_list_per_epoch = train(model, 1)
         print(model)
 
     elif count < 2:
-        optimize(model, weight_list_per_epoch, 1, [2, 4])
+        optimize(model, weight_list_per_epoch, 1, PRUNE_PER_LAYER)
         model = delete_filters(
-            model, weight_list_per_epoch, [2, 4], input_shape=INPUT_SHAPE, DG=DG
+            model, weight_list_per_epoch, PRUNE_PER_LAYER, input_shape=INPUT_SHAPE, DG=DG
         )
         model, history, weight_list_per_epoch = train(model, 1)
 
     elif count < 3:
-        optimize(model, weight_list_per_epoch, 1, [2, 4])
+        optimize(model, weight_list_per_epoch, 1, PRUNE_PER_LAYER)
         model = delete_filters(
-            model, weight_list_per_epoch, [2, 4], input_shape=INPUT_SHAPE, DG=DG
+            model, weight_list_per_epoch, PRUNE_PER_LAYER, input_shape=INPUT_SHAPE, DG=DG
         )
         model, history, weight_list_per_epoch = train(model, 1)
 
     elif count < 4:
-        optimize(model, weight_list_per_epoch, 1, [2, 4])
+        optimize(model, weight_list_per_epoch, 1, PRUNE_PER_LAYER)
         model = delete_filters(
-            model, weight_list_per_epoch, [2, 4], input_shape=INPUT_SHAPE, DG=DG
+            model, weight_list_per_epoch, PRUNE_PER_LAYER, input_shape=INPUT_SHAPE, DG=DG
         )
         model, history, weight_list_per_epoch = train(model, 1)
 
     elif count < 5:
-        optimize(model, weight_list_per_epoch, 1, [2, 4])
+        optimize(model, weight_list_per_epoch, 1, PRUNE_PER_LAYER)
         model = delete_filters(
-            model, weight_list_per_epoch, [2, 4], input_shape=INPUT_SHAPE, DG=DG
+            model, weight_list_per_epoch, PRUNE_PER_LAYER, input_shape=INPUT_SHAPE, DG=DG
         )
         model, history, weight_list_per_epoch = train(model, 1)
 
     elif count < 10:
-        optimize(model, weight_list_per_epoch, 1, [2, 4])
+        optimize(model, weight_list_per_epoch, 1, PRUNE_PER_LAYER)
         model = delete_filters(
-            model, weight_list_per_epoch, [2, 4], input_shape=INPUT_SHAPE, DG=DG
+            model, weight_list_per_epoch, PRUNE_PER_LAYER, input_shape=INPUT_SHAPE, DG=DG
         )
         model, history, weight_list_per_epoch = train(model, 1)
 
     else:
-        optimize(model, weight_list_per_epoch, 10, [2, 4])
+        optimize(model, weight_list_per_epoch, 10, PRUNE_PER_LAYER)
         model = delete_filters(
-            model, weight_list_per_epoch, [2, 4], input_shape=INPUT_SHAPE, DG=DG
+            model, weight_list_per_epoch, PRUNE_PER_LAYER, input_shape=INPUT_SHAPE, DG=DG
         )
         model, history, weight_list_per_epoch = train(model, 10)
 
