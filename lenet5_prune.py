@@ -29,13 +29,12 @@ def LeNet5():
         nn.Softmax(dim=1),
     )
 
-
 num_workers = multiprocessing.cpu_count()
 transform = transforms.Compose(
     [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
 )
-train_dataset = datasets.MNIST(".", train=True, download=True, transform=transform)
-test_dataset = datasets.MNIST(".", train=False, download=True, transform=transform)
+train_dataset = datasets.MNIST(dataset_path, train=True, download=True, transform=transform)
+test_dataset = datasets.MNIST(dataset_path, train=False, download=True, transform=transform)
 
 train_loader = torch.utils.data.DataLoader(
     train_dataset,

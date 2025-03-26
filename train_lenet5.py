@@ -4,6 +4,7 @@ import torchvision.datasets as datasets
 import torch.optim as optim
 import multiprocessing
 import torch.nn as nn
+from utils import *
 import torch
 import os
 
@@ -37,8 +38,8 @@ transform = transforms.Compose(
 )
 
 # Load MNIST dataset
-train_dataset = datasets.MNIST(root=".", train=True, download=True, transform=transform)
-test_dataset = datasets.MNIST(root=".", train=False, download=True, transform=transform)
+train_dataset = datasets.MNIST(root=dataset_path, train=True, download=True, transform=transform)
+test_dataset = datasets.MNIST(root=dataset_path, train=False, download=True, transform=transform)
 train_loader = DataLoader(
     train_dataset,
     batch_size=batch_size,

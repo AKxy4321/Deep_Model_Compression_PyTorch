@@ -3,11 +3,14 @@ from torchprofile import profile_macs
 from itertools import combinations
 import torch.nn.functional as F
 import torch.optim as optim
+import torch_pruning as tp
 import torch.nn as nn
 import numpy as np
 import torch
-import torch_pruning as tp
+import os
 
+
+dataset_path = os.path.join(os.getcwd, "data")
 
 def get_all_conv_layers(model):
     all_conv_layers = []
