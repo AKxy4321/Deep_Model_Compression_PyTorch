@@ -11,6 +11,7 @@ import os
 
 
 dataset_path = os.path.join(os.getcwd(), "data")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def get_all_conv_layers(model):
     all_conv_layers = []

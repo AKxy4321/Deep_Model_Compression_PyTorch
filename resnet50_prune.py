@@ -64,6 +64,7 @@ def optimize(model, weight_list_per_epoch, epochs, num_filter_pairs_to_prune_per
         )
 
         for data, target in progress_bar:
+            data, target = data.to(device), target.to(device)
             optimizer.zero_grad()
             output = model(data)
             loss = criterion(target, output)
@@ -85,6 +86,7 @@ def optimize(model, weight_list_per_epoch, epochs, num_filter_pairs_to_prune_per
         correct = 0
         with torch.no_grad():
             for data, target in test_loader:
+                data, target = data.to(device), target.to(device)
                 output = model(data)
                 val_loss += criterion(target, output).item()
                 pred = output.argmax(dim=1, keepdim=True)
@@ -118,6 +120,7 @@ def train(model, epochs, learning_rate=0.001):
         progress_bar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs}", leave=True)
 
         for data, target in progress_bar:
+            data, target = data.to(device), target.to(device)
             optimizer.zero_grad()
             output = model(data)
             loss = criterion(output, target)
@@ -143,6 +146,7 @@ def train(model, epochs, learning_rate=0.001):
         correct = 0
         with torch.no_grad():
             for data, target in test_loader:
+                data, target = data.to(device), target.to(device)
                 output = model(data)
                 val_loss += criterion(output, target).item()
                 pred = output.argmax(dim=1, keepdim=True)
@@ -165,6 +169,7 @@ def evaluate(model):
     running_loss = 0.0
     with torch.no_grad():
         for images, labels in test_loader:
+            images, labels = images.to(device), labels.to(device)
             outputs = model(images)
             loss = nn.CrossEntropyLoss()(outputs, labels)
             running_loss += loss.item()
@@ -217,12 +222,12 @@ def logging(model, history=None, log_dict=None):
     return log_dict
 
 
-model = resnet50()
+model = resnet50().to(device)
 # model.load_state_dict(
 #     torch.load(os.path.join(os.getcwd(), "models", "lenet_best.pth"), weights_only=True)
 # )
 DG = tp.DependencyGraph().build_dependency(
-    model, example_inputs=torch.randn(INPUT_SHAPE)
+    model, example_inputs=torch.randn(INPUT_SHAPE).to(device)
 )
 
 print("MODEL INITIALIZED AND WEIGHTS LOADED")
