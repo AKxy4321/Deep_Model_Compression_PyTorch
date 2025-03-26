@@ -1,5 +1,6 @@
 from torchvision import datasets, transforms
 import torch.nn.functional as F
+from vgg16_model import vgg16
 import torch.optim as optim
 import torch_pruning as tp
 import multiprocessing
@@ -15,51 +16,6 @@ BATCH_SIZE = 128
 INPUT_SHAPE = (BATCH_SIZE, 3, 32, 32)
 NO_PRUNING_LIMIT = 8
 PRUNE_PER_LAYER = [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
-
-def VGG16():
-    return nn.Sequential(
-        nn.Conv2d(in_channels=3, out_channels=64, kernel_size=3, padding=1),
-        nn.ReLU(inplace=True),
-        nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, padding=1),
-        nn.ReLU(inplace=True),
-        nn.MaxPool2d(kernel_size=2, stride=2),
-        nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, padding=1),
-        nn.ReLU(inplace=True),
-        nn.Conv2d(in_channels=128, out_channels=128, kernel_size=3, padding=1),
-        nn.ReLU(inplace=True),
-        nn.MaxPool2d(kernel_size=2, stride=2),
-        nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, padding=1),
-        nn.ReLU(inplace=True),
-        nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, padding=1),
-        nn.ReLU(inplace=True),
-        nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, padding=1),
-        nn.ReLU(inplace=True),
-        nn.MaxPool2d(kernel_size=2, stride=2),
-        nn.Conv2d(in_channels=256, out_channels=512, kernel_size=3, padding=1),
-        nn.ReLU(inplace=True),
-        nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, padding=1),
-        nn.ReLU(inplace=True),
-        nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, padding=1),
-        nn.ReLU(inplace=True),
-        nn.MaxPool2d(kernel_size=2, stride=2),
-        nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, padding=1),
-        nn.ReLU(inplace=True),
-        nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, padding=1),
-        nn.ReLU(inplace=True),
-        nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, padding=1),
-        nn.ReLU(inplace=True),
-        nn.MaxPool2d(kernel_size=2, stride=2),
-        nn.AdaptiveAvgPool2d((7, 7)),
-        nn.Flatten(),
-        nn.Linear(in_features=512 * 7 * 7, out_features=4096),
-        nn.ReLU(inplace=True),
-        nn.Dropout(),
-        nn.Linear(in_features=4096, out_features=4096),
-        nn.ReLU(inplace=True),
-        nn.Dropout(),
-        nn.Linear(in_features=4096, out_features=1000),
-        nn.Softmax(dim=1),
-    )
 
 
 num_workers = multiprocessing.cpu_count()
@@ -262,7 +218,7 @@ def logging(model, history=None, log_dict=None):
     return log_dict
 
 
-model = VGG16()
+model = vgg16()
 # model.load_state_dict(
 #     torch.load(os.path.join(os.getcwd(), "models", "lenet_best.pth"), weights_only=True)
 # )
