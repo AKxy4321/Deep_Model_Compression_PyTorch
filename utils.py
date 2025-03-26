@@ -10,7 +10,7 @@ import torch
 import os
 
 
-dataset_path = os.path.join(os.getcwd, "data")
+dataset_path = os.path.join(os.getcwd(), "data")
 
 def get_all_conv_layers(model):
     all_conv_layers = []
