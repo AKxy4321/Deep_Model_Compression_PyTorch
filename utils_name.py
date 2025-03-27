@@ -174,9 +174,8 @@ def get_l1_norms(model):
     named_modules_dict = dict(model.named_modules())
     l1_norm_matrix_dict = {}
 
-    for layer_name, layer in named_modules_dict.items():
-        if not isinstance(layer, nn.Conv2d):
-            continue
+    for layer_name in conv_layers:
+        layer = named_modules_dict.get(layer_name)
         if hasattr(layer, "weight") and layer.weight is not None:
             abs_weights = layer.weight.data.abs()
             l1_norm_matrix_dict[layer_name] = torch.sum(abs_weights, dim=(1, 2, 3))
@@ -225,6 +224,7 @@ def get_cosine_sims_filters(model):
             similarities = cosine_similarity([filter_vectors[i]], filter_vectors)[0]
             cosine_sum_list.append(similarities - 1)
         cosine_sums[layer_name] = cosine_sum_list
+
     return cosine_sums
 
 
@@ -294,8 +294,8 @@ def get_regularizer_value(
     for layer_name, layer in filter_pairs_dict.items():
         for episode in layer:
             regularizer_value += abs(
-                cosine_sims_dict[layer_name][episode[1]]
-                - cosine_sims_dict[layer_name][episode[0]]
+                np.sum(cosine_sims_dict[layer_name][episode[1]])
+                - np.sum(cosine_sims_dict[layer_name][episode[0]])
             )
 
     regularizer_value = np.exp(regularizer_value)
