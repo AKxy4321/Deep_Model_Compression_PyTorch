@@ -1,16 +1,17 @@
-from torchvision import datasets, transforms
-from model_densenet121 import densenet121
+import multiprocessing
+import os
+
+import pandas as pd
+import torch
+import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import torch_pruning as tp
-import multiprocessing
-import torch.nn as nn
+from torchvision import datasets, transforms
 from tqdm import tqdm
-import pandas as pd
-from utils import *
-import torch
-import os
 
+from model_densenet121 import densenet121
+from utils import *
 
 BATCH_SIZE = 128
 INPUT_SHAPE = (BATCH_SIZE, 3, 32, 32)
@@ -60,7 +61,7 @@ def optimize(model, weight_list_per_epoch, epochs, num_filter_pairs_to_prune_per
         train_loss = 0
         correct = 0
         progress_bar = tqdm(
-            train_loader, desc=f"Optimizing {epoch+1}/{epochs}", leave=True
+            train_loader, desc=f"Optimizing {epoch + 1}/{epochs}", leave=True
         )
 
         for data, target in progress_bar:
@@ -117,7 +118,9 @@ def train(model, epochs, learning_rate=0.001):
         model.train()
         train_loss = 0
         correct = 0
-        progress_bar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs}", leave=True)
+        progress_bar = tqdm(
+            train_loader, desc=f"Epoch {epoch + 1}/{epochs}", leave=True
+        )
 
         for data, target in progress_bar:
             data, target = data.to(device), target.to(device)
@@ -222,7 +225,7 @@ def logging(model, history=None, log_dict=None):
     return log_dict
 
 
-model = densenet121().to(device)
+model = densenet121(pretrained=False).to(device)
 # model.load_state_dict(
 #     torch.load(os.path.join(os.getcwd(), "models", "lenet_best.pth"), weights_only=True)
 # )
@@ -259,9 +262,7 @@ while validation_accuracy - max_val_acc >= -1:
     print(f"MAX VALIDATION ACCURACY = {max_val_acc}")
 
     if count < 1:
-        optimize(
-            model, weight_list_per_epoch, 1, PRUNE_PER_LAYER
-        )
+        optimize(model, weight_list_per_epoch, 1, PRUNE_PER_LAYER)
         model = delete_filters(
             model,
             weight_list_per_epoch,
@@ -273,9 +274,7 @@ while validation_accuracy - max_val_acc >= -1:
         print(model)
 
     elif count < 2:
-        optimize(
-            model, weight_list_per_epoch, 1, PRUNE_PER_LAYER
-        )
+        optimize(model, weight_list_per_epoch, 1, PRUNE_PER_LAYER)
         model = delete_filters(
             model,
             weight_list_per_epoch,
@@ -286,9 +285,7 @@ while validation_accuracy - max_val_acc >= -1:
         model, history, weight_list_per_epoch = train(model, 1)
 
     elif count < 3:
-        optimize(
-            model, weight_list_per_epoch, 1, PRUNE_PER_LAYER
-        )
+        optimize(model, weight_list_per_epoch, 1, PRUNE_PER_LAYER)
         model = delete_filters(
             model,
             weight_list_per_epoch,
@@ -299,9 +296,7 @@ while validation_accuracy - max_val_acc >= -1:
         model, history, weight_list_per_epoch = train(model, 1)
 
     elif count < 4:
-        optimize(
-            model, weight_list_per_epoch, 1, PRUNE_PER_LAYER
-        )
+        optimize(model, weight_list_per_epoch, 1, PRUNE_PER_LAYER)
         model = delete_filters(
             model,
             weight_list_per_epoch,
@@ -312,9 +307,7 @@ while validation_accuracy - max_val_acc >= -1:
         model, history, weight_list_per_epoch = train(model, 1)
 
     elif count < 5:
-        optimize(
-            model, weight_list_per_epoch, 1, PRUNE_PER_LAYER
-        )
+        optimize(model, weight_list_per_epoch, 1, PRUNE_PER_LAYER)
         model = delete_filters(
             model,
             weight_list_per_epoch,
@@ -325,9 +318,7 @@ while validation_accuracy - max_val_acc >= -1:
         model, history, weight_list_per_epoch = train(model, 1)
 
     elif count < 10:
-        optimize(
-            model, weight_list_per_epoch, 1, PRUNE_PER_LAYER
-        )
+        optimize(model, weight_list_per_epoch, 1, PRUNE_PER_LAYER)
         model = delete_filters(
             model,
             weight_list_per_epoch,
@@ -338,9 +329,7 @@ while validation_accuracy - max_val_acc >= -1:
         model, history, weight_list_per_epoch = train(model, 1)
 
     else:
-        optimize(
-            model, weight_list_per_epoch, 10, PRUNE_PER_LAYER
-        )
+        optimize(model, weight_list_per_epoch, 10, PRUNE_PER_LAYER)
         model = delete_filters(
             model,
             weight_list_per_epoch,

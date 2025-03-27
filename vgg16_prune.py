@@ -166,27 +166,25 @@ def train(model, epochs, learning_rate=0.001):
 
 
 def evaluate(model):
-    # global test_loader
-    # model.eval()
-    # correct = 0
-    # total = 0
-    # running_loss = 0.0
-    # with torch.no_grad():
-    #     for images, labels in test_loader:
-    #         images, labels = images.to(device), labels.to(device)
-    #         outputs = model(images)
-    #         loss = nn.CrossEntropyLoss()(outputs, labels)
-    #         running_loss += loss.item()
-    #         correct += (outputs.argmax(1) == labels).sum().item()
-    #         total += labels.size(0)
+    global test_loader
+    model.eval()
+    correct = 0
+    total = 0
+    running_loss = 0.0
+    with torch.no_grad():
+        for images, labels in test_loader:
+            images, labels = images.to(device), labels.to(device)
+            outputs = model(images)
+            loss = nn.CrossEntropyLoss()(outputs, labels)
+            running_loss += loss.item()
+            correct += (outputs.argmax(1) == labels).sum().item()
+            total += labels.size(0)
 
-    # val_loss = running_loss / total
-    # val_accuracy = 100 * correct / total
-    # print(f"Validation Accuracy: {val_accuracy:.2f}%")
-    # print(f"Validation Loss: {val_loss:.4f}")
+    val_loss = running_loss / total
+    val_accuracy = 100 * correct / total
+    print(f"Validation Accuracy: {val_accuracy:.2f}%")
+    print(f"Validation Loss: {val_loss:.4f}")
 
-    val_accuracy = 0
-    val_loss = 1
     conv_layer_names = get_all_conv_layers(model)
     named_modules_dict = dict(model.named_modules())
 
@@ -277,7 +275,7 @@ while validation_accuracy - max_val_acc >= -1:
     print(f"MAX VALIDATION ACCURACY = {max_val_acc}")
 
     if count < 1:
-        optimize(model, weight_list_per_epoch, 1, PRUNE_PER_LAYER)
+        optimize(model, weight_list_per_epoch, 0, PRUNE_PER_LAYER)
         model = delete_filters(
             model,
             weight_list_per_epoch,

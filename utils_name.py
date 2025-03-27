@@ -242,13 +242,11 @@ def delete_filters(
         model, weight_list_per_epoch, num_filter_pairs_to_prune_per_layer
     )
     all_conv_layers = get_all_conv_layers(model)
+    layers = dict(model.named_modules())
 
-    layers = list(model.children())
-
-    for layer_index in range(len(all_conv_layers)):
-        conv_idx = all_conv_layers[layer_index]
-        layer = layers[conv_idx]
-        prune_indices = filter_pruning_indices[layer_index]
+    for layer_name in all_conv_layers:
+        layer = layers[layer_name]
+        prune_indices = filter_pruning_indices[layer_name]
         if len(prune_indices) == 0:
             continue
         if isinstance(layer, nn.Conv2d):
@@ -261,15 +259,7 @@ def delete_filters(
             else:
                 print("invalid to prune more")
 
-    verify_shapes(model, input_shape)
     return model
-
-
-def verify_shapes(model, input_shape):
-    x = torch.randn(input_shape)
-    for layer in model:
-        x = layer(x)
-        # print(f"After {layer.__class__.__name__}: {x.shape}")
 
 
 def get_regularizer_value(
