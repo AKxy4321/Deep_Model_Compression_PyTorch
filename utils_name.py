@@ -272,16 +272,6 @@ def verify_shapes(model, input_shape):
         # print(f"After {layer.__class__.__name__}: {x.shape}")
 
 
-def get_flattened_indices(channels_to_keep, height, width):
-    flattened_indices = []
-    for channel_idx in channels_to_keep:
-        for h in range(height):
-            for w in range(width):
-                flattened_index = channel_idx * height * width + h * width + w
-                flattened_indices.append(flattened_index)
-    return flattened_indices
-
-
 def get_regularizer_value(
     model, weight_list_per_epoch, num_filter_pairs_to_prune_per_layer
 ):

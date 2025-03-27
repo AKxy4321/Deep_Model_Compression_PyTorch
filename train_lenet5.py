@@ -1,12 +1,14 @@
+import multiprocessing
+import os
+
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
-import torchvision.datasets as datasets
-import torch.optim as optim
-import multiprocessing
-import torch.nn as nn
+
 from utils import *
-import torch
-import os
 
 
 # Define the LeNet model
@@ -38,8 +40,12 @@ transform = transforms.Compose(
 )
 
 # Load MNIST dataset
-train_dataset = datasets.MNIST(root=dataset_path, train=True, download=True, transform=transform)
-test_dataset = datasets.MNIST(root=dataset_path, train=False, download=True, transform=transform)
+train_dataset = datasets.MNIST(
+    root=dataset_path, train=True, download=True, transform=transform
+)
+test_dataset = datasets.MNIST(
+    root=dataset_path, train=False, download=True, transform=transform
+)
 train_loader = DataLoader(
     train_dataset,
     batch_size=batch_size,
@@ -65,7 +71,7 @@ optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 def train_and_evaluate():
     best_accuracy = 0.0
     patience_counter = 0
-    checkpoint_path = os.path.join(os.getcwd(), "models", "lenet_best.pth")
+    checkpoint_path = os.path.join(os.getcwd(), "models", "lenet5.pt")
 
     for epoch in range(epochs):
         model.train()
@@ -86,7 +92,7 @@ def train_and_evaluate():
         avg_loss = total_loss / len(train_loader)
         train_accuracy = 100 * correct / total
         print(
-            f"Epoch {epoch+1}/{epochs}, Loss: {avg_loss:.4f}, Train Accuracy: {train_accuracy:.2f}%"
+            f"Epoch {epoch + 1}/{epochs}, Loss: {avg_loss:.4f}, Train Accuracy: {train_accuracy:.2f}%"
         )
 
         # Evaluate model
