@@ -13,14 +13,9 @@ import os
 dataset_path = os.path.join(os.getcwd(), "data")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+# Works for only Sequential Models
 def get_all_conv_layers(model):
-    all_conv_layers = []
-
-    all_conv_layers = [
-        i for i, layer in enumerate(model) if isinstance(layer, nn.Conv2d)
-    ]
-
-    return all_conv_layers
+    return [i for i, layer in enumerate(model) if isinstance(layer, nn.Conv2d)]
 
 
 def get_all_dense_layers(model):
