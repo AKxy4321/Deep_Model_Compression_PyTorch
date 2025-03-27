@@ -111,8 +111,9 @@ def train(model, epochs, learning_rate=0.001):
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
     history = {"loss": [], "accuracy": [], "val_loss": [], "val_accuracy": []}
-    conv_indices = get_all_conv_layers(model)
-    weight_list_per_epoch = [[] for _ in conv_indices]
+    conv_layer_names = get_all_conv_layers(model)
+    named_modules_dict = dict(model.named_modules())
+    weight_list_per_epoch = {layer_name: [] for layer_name in conv_layer_names}
 
     print("Training model")
     for epoch in range(epochs):
@@ -142,8 +143,13 @@ def train(model, epochs, learning_rate=0.001):
         history["loss"].append(train_loss)
         history["accuracy"].append(accuracy)
 
-        for i, layer_idx in enumerate(conv_indices):
-            weight_list_per_epoch[i].append(model[layer_idx].weight.data.clone().cpu())
+    for layer_name in conv_layer_names:
+        if layer_name in named_modules_dict:
+            layer = named_modules_dict[layer_name]
+
+            if hasattr(layer, "weight") and layer.weight is not None:
+                weight_tensor = layer.weight.data.clone().cpu()
+                weight_list_per_epoch[layer_name].append(weight_tensor)
 
         model.eval()
         val_loss = 0
@@ -284,7 +290,6 @@ while validation_accuracy - max_val_acc >= -1:
             input_shape=INPUT_SHAPE,
         )
         model, history, weight_list_per_epoch = train(model, 1)
-        print(model)
 
     elif count < 2:
         optimize(model, weight_list_per_epoch, 1, PRUNE_PER_LAYER)
