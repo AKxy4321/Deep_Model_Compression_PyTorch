@@ -1,5 +1,5 @@
 from torchvision import datasets, transforms
-from densenet121_model import densenet121
+from model_densenet121 import densenet121
 import torch.nn.functional as F
 import torch.optim as optim
 import torch_pruning as tp
