@@ -1,15 +1,20 @@
 import multiprocessing
 import os
+import sys
+
+sys.path.append(
+    os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+)  # Add parent directory to sys.path
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
+from model_resnet50 import resnet50
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from model_resnet50 import resnet50
 from utils import *
 
 # Hyperparameters
