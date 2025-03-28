@@ -20,7 +20,9 @@ PRUNE_PER_LAYER = [2] * 49
 
 
 num_workers = multiprocessing.cpu_count()
-transform = transforms.Compose([transforms.ToTensor()])
+transform = transforms.Compose(
+    [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
+)
 train_dataset = datasets.CIFAR10(
     dataset_path, train=True, download=True, transform=transform
 )
