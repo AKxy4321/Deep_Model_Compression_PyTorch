@@ -5,7 +5,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
 import torch_pruning as tp
 from sklearn.metrics.pairwise import cosine_similarity
 from torchprofile import profile_macs
@@ -64,9 +63,10 @@ def get_cosine_sims_filters_per_epoch(weight_list_per_epoch):
     Returns a dict mapping layer names to a dict of filter pair similarity sums.
     """
     sorted_filter_pair_sum = {}
-
+    num_filters_model = []
     for layer_name, epoch_weight_list in weight_list_per_epoch.items():
         num_filters = epoch_weight_list[0].shape[0]
+        num_filters_model.append(num_filters)
 
         # Create a dict with filter pair keys (1-indexed in the key for clarity)
         filter_pair_similarities = {
@@ -88,6 +88,7 @@ def get_cosine_sims_filters_per_epoch(weight_list_per_epoch):
             )
         )
 
+    print(f"NUM FILTERS: {num_filters_model}")
     return sorted_filter_pair_sum
 
 
@@ -238,6 +239,7 @@ def delete_filters(
     if input_shape is None:
         print("Error: Input shape not defined")
 
+    print("PRUNING STARTED")
     filter_pruning_indices, _ = find_pruning_indices(
         model, weight_list_per_epoch, num_filter_pairs_to_prune_per_layer
     )
@@ -254,7 +256,6 @@ def delete_filters(
                 layer, tp.prune_conv_out_channels, idxs=prune_indices
             )
             if DG.check_pruning_group(group):  # Avoid over-pruning
-                print("pruning group")
                 group.prune()
             else:
                 print("invalid to prune more")
@@ -288,3 +289,45 @@ def custom_loss(lmbda, regularizer_value):
         return F.cross_entropy(y_pred, y_true) + lmbda * regularizer_value
 
     return loss
+
+
+def logging(model, history=None, log_dict=None):
+    global INPUT_SHAPE
+    if log_dict is None:
+        log_dict = {
+            "train_loss": [],
+            "train_acc": [],
+            "val_loss": [],
+            "val_acc": [],
+            "total_params": [],
+            "total_flops": [],
+        }
+
+    conv_layers = get_all_conv_layers(model)
+    for layer_name in conv_layers:
+        log_dict[f"filters_in_{layer_name}"] = []
+
+    best_acc_index = history["val_accuracy"].index(max(history["val_accuracy"]))
+    log_dict["train_loss"].append(history["loss"][best_acc_index])
+    log_dict["train_acc"].append(history["accuracy"][best_acc_index])
+    log_dict["val_loss"].append(history["val_loss"][best_acc_index])
+    log_dict["val_acc"].append(history["val_accuracy"][best_acc_index])
+
+    total_params, total_flops = count_model_params_flops(model, INPUT_SHAPE)
+    log_dict["total_params"].append(total_params)
+    log_dict["total_flops"].append(total_flops)
+
+    if log_dict is not None:
+        print(f"Current FLOPS: {total_flops}, Current params : {total_params}")
+
+    # Dynamically log filter counts for all convolutional layers
+    for layer_name in log_dict.keys():
+        if layer_name.startswith("filters_in_"):
+            conv_layer_name = layer_name.replace("filters_in_", "")
+            conv_layer = dict(model.named_modules()).get(conv_layer_name)
+            if conv_layer:
+                log_dict[layer_name].append(conv_layer.out_channels)
+
+    print("Validation accuracy ", max(history["val_accuracy"]))
+
+    return log_dict
