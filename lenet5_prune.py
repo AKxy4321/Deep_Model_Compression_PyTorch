@@ -73,7 +73,7 @@ def logging(model, history=None, log_dict=None):
 
 model = LeNet5().to(device)
 model.load_state_dict(
-    torch.load(os.path.join(os.getcwd(), "models", "lenet5.pt"), weights_only=True)
+    torch.load(os.path.join(os.getcwd(), "weights", "lenet5.pt"), weights_only=True)
 )
 DG = tp.DependencyGraph().build_dependency(
     model, example_inputs=torch.randn(INPUT_SHAPE).to(device)
