@@ -16,7 +16,8 @@ from train_eval_optimise import config, evaluate, optimize, train
 BATCH_SIZE = 128
 INPUT_SHAPE = (BATCH_SIZE, 1, 28, 28)
 NO_PRUNING_LIMIT = 8
-PRUNE_PER_LAYER = [2, 4]
+PRUNE_PER_LAYER = [2, 5]
+MIN_FILTERS_PER_LAYER = [2, 3]
 
 
 config(BATCH_SIZE=BATCH_SIZE)
@@ -71,9 +72,9 @@ def logging(model, history=None, log_dict=None):
 
 
 model = LeNet5().to(device)
-# model.load_state_dict(
-#     torch.load(os.path.join(os.getcwd(), "models", "lenet5.pth"), weights_only=True)
-# )
+model.load_state_dict(
+    torch.load(os.path.join(os.getcwd(), "models", "lenet5.pt"), weights_only=True)
+)
 DG = tp.DependencyGraph().build_dependency(
     model, example_inputs=torch.randn(INPUT_SHAPE).to(device)
 )
@@ -90,8 +91,8 @@ log_dict = logging(model, history)
 
 max_val_acc = validation_accuracy
 count = 0
-a, b = count_model_params_flops(model, INPUT_SHAPE)
-print(a, b)
+total_params, total_flops = count_model_params_flops(model, INPUT_SHAPE)
+print(total_params, total_flops)
 
 print("STARTED PRUNING PROCESS")
 
@@ -106,86 +107,19 @@ while validation_accuracy - max_val_acc >= -1:
 
     print(f"MAX VALIDATION ACCURACY = {max_val_acc}")
 
-    if count < 1:
-        optimize(model, weight_list_per_epoch, 1, PRUNE_PER_LAYER)
-        model = delete_filters(
-            model,
-            weight_list_per_epoch,
-            PRUNE_PER_LAYER,
-            input_shape=INPUT_SHAPE,
-            DG=DG,
-        )
-        model, history, weight_list_per_epoch = train(model, 1)
-        print(model)
+    optimize(model, weight_list_per_epoch, 1, PRUNE_PER_LAYER)
+    model = delete_filters(
+        model=model,
+        weight_list_per_epoch=weight_list_per_epoch,
+        num_filter_pairs_to_prune_per_layer=PRUNE_PER_LAYER,
+        min_filters_per_layer=MIN_FILTERS_PER_LAYER,
+        input_shape=INPUT_SHAPE,
+        DG=DG,
+    )
+    model, history, weight_list_per_epoch = train(model, 1)
 
-    elif count < 2:
-        optimize(model, weight_list_per_epoch, 1, PRUNE_PER_LAYER)
-        model = delete_filters(
-            model,
-            weight_list_per_epoch,
-            PRUNE_PER_LAYER,
-            input_shape=INPUT_SHAPE,
-            DG=DG,
-        )
-        model, history, weight_list_per_epoch = train(model, 1)
-
-    elif count < 3:
-        optimize(model, weight_list_per_epoch, 1, PRUNE_PER_LAYER)
-        model = delete_filters(
-            model,
-            weight_list_per_epoch,
-            PRUNE_PER_LAYER,
-            input_shape=INPUT_SHAPE,
-            DG=DG,
-        )
-        model, history, weight_list_per_epoch = train(model, 1)
-
-    elif count < 4:
-        optimize(model, weight_list_per_epoch, 1, PRUNE_PER_LAYER)
-        model = delete_filters(
-            model,
-            weight_list_per_epoch,
-            PRUNE_PER_LAYER,
-            input_shape=INPUT_SHAPE,
-            DG=DG,
-        )
-        model, history, weight_list_per_epoch = train(model, 1)
-
-    elif count < 5:
-        optimize(model, weight_list_per_epoch, 1, PRUNE_PER_LAYER)
-        model = delete_filters(
-            model,
-            weight_list_per_epoch,
-            PRUNE_PER_LAYER,
-            input_shape=INPUT_SHAPE,
-            DG=DG,
-        )
-        model, history, weight_list_per_epoch = train(model, 1)
-
-    elif count < 10:
-        optimize(model, weight_list_per_epoch, 1, PRUNE_PER_LAYER)
-        model = delete_filters(
-            model,
-            weight_list_per_epoch,
-            PRUNE_PER_LAYER,
-            input_shape=INPUT_SHAPE,
-            DG=DG,
-        )
-        model, history, weight_list_per_epoch = train(model, 1)
-
-    else:
-        optimize(model, weight_list_per_epoch, 10, PRUNE_PER_LAYER)
-        model = delete_filters(
-            model,
-            weight_list_per_epoch,
-            PRUNE_PER_LAYER,
-            input_shape=INPUT_SHAPE,
-            DG=DG,
-        )
-        model, history, weight_list_per_epoch = train(model, 10)
-
-    a, b = count_model_params_flops(model, INPUT_SHAPE)
-    print(a, b)
+    total_params, total_flops = count_model_params_flops(model, INPUT_SHAPE)
+    print(total_params, total_flops)
 
     if current_parameters < initial_parameters:
         initial_parameters = current_parameters

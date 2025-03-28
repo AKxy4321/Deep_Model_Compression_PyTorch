@@ -1,3 +1,4 @@
+import math
 import os
 from itertools import combinations
 
@@ -116,7 +117,10 @@ def get_filter_pruning_indices(filter_pairs, l1_norms, num_filter_pairs_to_prune
 
 
 def find_pruning_indices(
-    model, weight_list_per_epoch, num_filter_pairs_to_prune_per_layer: list
+    model,
+    weight_list_per_epoch,
+    num_filter_pairs_to_prune_per_layer: list,
+    min_filters_per_layer: list,
 ):
     """
     Finds pruning indices per layer based on cosine similarities between filters and L1 norms.
@@ -149,18 +153,11 @@ def find_pruning_indices(
     # Process layers in the order of sorted_filter_pair_sums keys
     for i, (layer_name, filter_pairs) in enumerate(all_layer_filter_pairs.items()):
         z = len(filter_pairs)
-        tot_filters_in_layer = int(round((1 + ((1 + 8 * z) ** 0.5)) / 2))
+        total_filters_in_layer = (1 + math.isqrt(1 + 8 * z)) // 2
+        min_filters = min_filters_per_layer[i]
+        max_prunable = total_filters_in_layer - min_filters
+        num_to_prune = min(num_filter_pairs_to_prune_per_layer[i], max_prunable)
 
-        # Ensure we have a pruning count for this layer (by list index)
-        if i >= len(num_filter_pairs_to_prune_per_layer):
-            print(
-                f"Warning: No pruning value provided for layer '{layer_name}'. Skipping..."
-            )
-            continue
-
-        num_to_prune = min(
-            num_filter_pairs_to_prune_per_layer[i], tot_filters_in_layer - 1
-        )
         # Now use the layer_name key to access l1 norms
         pruning_indices = get_filter_pruning_indices(
             filter_pairs, l1_norm_matrix_dict[layer_name], num_to_prune
@@ -233,6 +230,7 @@ def delete_filters(
     model,
     weight_list_per_epoch,
     num_filter_pairs_to_prune_per_layer: list,
+    min_filters_per_layer: list,
     input_shape=None,
     DG=None,
 ):
@@ -241,7 +239,10 @@ def delete_filters(
 
     print("PRUNING STARTED")
     filter_pruning_indices, _ = find_pruning_indices(
-        model, weight_list_per_epoch, num_filter_pairs_to_prune_per_layer
+        model,
+        weight_list_per_epoch,
+        num_filter_pairs_to_prune_per_layer,
+        min_filters_per_layer,
     )
     all_conv_layers = get_all_conv_layers(model)
     layers = dict(model.named_modules())
@@ -249,8 +250,17 @@ def delete_filters(
     for layer_name in all_conv_layers:
         layer = layers[layer_name]
         prune_indices = filter_pruning_indices[layer_name]
+
+        # Skip pruning if minimum number of
+        if layer.out_channels <= 2:
+            print(
+                f"Skipping pruning for {layer_name} as it has only {layer.out_channels} filters"
+            )
+            continue
+
         if len(prune_indices) == 0:
             continue
+
         if isinstance(layer, nn.Conv2d):
             group = DG.get_pruning_group(
                 layer, tp.prune_conv_out_channels, idxs=prune_indices
