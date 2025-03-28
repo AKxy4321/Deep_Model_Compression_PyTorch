@@ -1,20 +1,17 @@
-import multiprocessing
 import os
 
 import pandas as pd
 import torch
 import torch_pruning as tp
-from torchvision import datasets, transforms
 
 from models.model_resnet50 import resnet50
 from pruning_utils import (
     count_model_params_flops,
-    dataset_path,
     delete_filters,
     device,
     logging,
 )
-from train_eval_optimise import evaluate, optimize, train
+from train_eval_optimise import config, evaluate, optimize, train
 
 BATCH_SIZE = 128
 INPUT_SHAPE = (BATCH_SIZE, 3, 32, 32)
@@ -22,31 +19,7 @@ NO_PRUNING_LIMIT = 8
 PRUNE_PER_LAYER = [2] * 49
 
 
-num_workers = multiprocessing.cpu_count()
-transform = transforms.Compose(
-    [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
-)
-train_dataset = datasets.CIFAR10(
-    dataset_path, train=True, download=True, transform=transform
-)
-test_dataset = datasets.CIFAR10(
-    dataset_path, train=False, download=True, transform=transform
-)
-
-train_loader = torch.utils.data.DataLoader(
-    train_dataset,
-    batch_size=BATCH_SIZE,
-    shuffle=True,
-    num_workers=num_workers,
-    pin_memory=True,
-)
-test_loader = torch.utils.data.DataLoader(
-    test_dataset,
-    batch_size=BATCH_SIZE,
-    shuffle=False,
-    num_workers=num_workers,
-    pin_memory=True,
-)
+config(BATCH_SIZE=BATCH_SIZE)
 
 
 model = resnet50().to(device)

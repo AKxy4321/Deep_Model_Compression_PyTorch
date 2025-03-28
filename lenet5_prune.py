@@ -1,22 +1,25 @@
-import multiprocessing
 import os
 
 import pandas as pd
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
 import torch_pruning as tp
-from torchvision import datasets, transforms
-from tqdm import tqdm
 
-from pruning_utils import *
-from train_eval_optimise import evaluate, optimize, train
+from pruning_utils import (
+    count_model_params_flops,
+    delete_filters,
+    device,
+    logging,
+)
+from train_eval_optimise import config, evaluate, optimize, train
 
 BATCH_SIZE = 128
 INPUT_SHAPE = (BATCH_SIZE, 1, 28, 28)
 NO_PRUNING_LIMIT = 8
 PRUNE_PER_LAYER = [2, 4]
+
+
+config(BATCH_SIZE=BATCH_SIZE)
 
 
 def LeNet5():
@@ -31,33 +34,6 @@ def LeNet5():
         nn.Linear(in_features=500, out_features=10),
         nn.Softmax(dim=1),
     )
-
-
-num_workers = multiprocessing.cpu_count()
-transform = transforms.Compose(
-    [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
-)
-train_dataset = datasets.MNIST(
-    dataset_path, train=True, download=True, transform=transform
-)
-test_dataset = datasets.MNIST(
-    dataset_path, train=False, download=True, transform=transform
-)
-
-train_loader = torch.utils.data.DataLoader(
-    train_dataset,
-    batch_size=BATCH_SIZE,
-    shuffle=True,
-    num_workers=num_workers,
-    pin_memory=True,
-)
-test_loader = torch.utils.data.DataLoader(
-    test_dataset,
-    batch_size=BATCH_SIZE,
-    shuffle=False,
-    num_workers=num_workers,
-    pin_memory=True,
-)
 
 
 def logging(model, history=None, log_dict=None):
@@ -94,12 +70,12 @@ def logging(model, history=None, log_dict=None):
     return log_dict
 
 
-model = LeNet5()
+model = LeNet5().to(device)
 # model.load_state_dict(
 #     torch.load(os.path.join(os.getcwd(), "models", "lenet5.pth"), weights_only=True)
 # )
 DG = tp.DependencyGraph().build_dependency(
-    model, example_inputs=torch.randn(INPUT_SHAPE)
+    model, example_inputs=torch.randn(INPUT_SHAPE).to(device)
 )
 
 print("MODEL INITIALIZED AND WEIGHTS LOADED")

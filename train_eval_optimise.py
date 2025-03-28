@@ -1,14 +1,53 @@
+import multiprocessing
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torchvision import datasets, transforms
 from tqdm import tqdm
 
 from pruning_utils import (
     custom_loss,
+    dataset_path,
     device,
     get_all_conv_layers,
     get_regularizer_value,
 )
+
+num_workers = 0
+BATCH_SIZE = 0
+train_loader = 0
+test_loader = 0
+
+
+def config(BATCH_SIZE):
+    global train_loader, test_loader
+    num_workers = multiprocessing.cpu_count()
+    transform = transforms.Compose(
+        [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
+    )
+    train_dataset = datasets.MNIST(
+        dataset_path, train=True, download=True, transform=transform
+    )
+    test_dataset = datasets.MNIST(
+        dataset_path, train=False, download=True, transform=transform
+    )
+
+    train_loader = torch.utils.data.DataLoader(
+        train_dataset,
+        batch_size=BATCH_SIZE,
+        shuffle=True,
+        num_workers=num_workers,
+        pin_memory=True,
+    )
+
+    test_loader = torch.utils.data.DataLoader(
+        test_dataset,
+        batch_size=BATCH_SIZE,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=True,
+    )
 
 
 def optimize(model, weight_list_per_epoch, epochs, num_filter_pairs_to_prune_per_layer):
