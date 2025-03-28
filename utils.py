@@ -1,17 +1,18 @@
-from sklearn.metrics.pairwise import cosine_similarity
-from torchprofile import profile_macs
+import os
 from itertools import combinations
+
+import numpy as np
+import torch
+import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import torch_pruning as tp
-import torch.nn as nn
-import numpy as np
-import torch
-import os
-
+from sklearn.metrics.pairwise import cosine_similarity
+from torchprofile import profile_macs
 
 dataset_path = os.path.join(os.getcwd(), "data")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 # Works for only Sequential Models
 def get_all_conv_layers(model):
@@ -40,7 +41,7 @@ def get_cosine_sims_filters_per_epoch(weight_list_per_epoch):
     sorted_filter_pair_sum = [{} for _ in range(num_layers)]
 
     filter_pair_similarities = [
-        {f"{i+1}, {j+1}": 0.0 for i, j in combinations(range(_), 2)}
+        {f"{i + 1}, {j + 1}": 0.0 for i, j in combinations(range(_), 2)}
         for _ in num_filters
     ]
 
@@ -55,9 +56,9 @@ def get_cosine_sims_filters_per_epoch(weight_list_per_epoch):
             )  # Pairwise cosine similarities
 
             for i, j in combinations(range(num_filter), 2):
-                filter_pair_similarities[layer_index][f"{i+1}, {j+1}"] += cosine_sim[
-                    i, j
-                ].item()
+                filter_pair_similarities[layer_index][f"{i + 1}, {j + 1}"] += (
+                    cosine_sim[i, j].item()
+                )
 
     for layer_index in range(num_layers):
         sorted_filter_pair_sum[layer_index] = dict(

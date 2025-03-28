@@ -10,13 +10,13 @@ import torch_pruning as tp
 from torchvision import datasets, transforms
 from tqdm import tqdm
 
-from model_vgg16 import vgg16
+from models.model_vgg16 import vgg16
 from utils_name import *
 
 BATCH_SIZE = 128
 INPUT_SHAPE = (BATCH_SIZE, 3, 32, 32)
 NO_PRUNING_LIMIT = 8
-PRUNE_PER_LAYER = [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+PRUNE_PER_LAYER = [2] * 13
 
 
 num_workers = multiprocessing.cpu_count()

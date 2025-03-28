@@ -10,13 +10,14 @@ import torch_pruning as tp
 from torchvision import datasets, transforms
 from tqdm import tqdm
 
-from model_densenet121 import densenet121
-from utils import *
+from models.model_densenet121 import densenet121
+from utils_name import *
 
 BATCH_SIZE = 128
 INPUT_SHAPE = (BATCH_SIZE, 3, 32, 32)
 NO_PRUNING_LIMIT = 8
 PRUNE_PER_LAYER = [2] * 120
+
 
 num_workers = multiprocessing.cpu_count()
 transform = transforms.Compose([transforms.ToTensor()])
@@ -110,8 +111,9 @@ def train(model, epochs, learning_rate=0.001):
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
     history = {"loss": [], "accuracy": [], "val_loss": [], "val_accuracy": []}
-    conv_indices = get_all_conv_layers(model)
-    weight_list_per_epoch = [[] for _ in conv_indices]
+    conv_layer_names = get_all_conv_layers(model)
+    named_modules_dict = dict(model.named_modules())
+    weight_list_per_epoch = {layer_name: [] for layer_name in conv_layer_names}
 
     print("Training model")
     for epoch in range(epochs):
@@ -141,8 +143,13 @@ def train(model, epochs, learning_rate=0.001):
         history["loss"].append(train_loss)
         history["accuracy"].append(accuracy)
 
-        for i, layer_idx in enumerate(conv_indices):
-            weight_list_per_epoch[i].append(model[layer_idx].weight.data.clone().cpu())
+    for layer_name in conv_layer_names:
+        if layer_name in named_modules_dict:
+            layer = named_modules_dict[layer_name]
+
+            if hasattr(layer, "weight") and layer.weight is not None:
+                weight_tensor = layer.weight.data.clone().cpu()
+                weight_list_per_epoch[layer_name].append(weight_tensor)
 
         model.eval()
         val_loss = 0
@@ -184,10 +191,19 @@ def evaluate(model):
     print(f"Validation Accuracy: {val_accuracy:.2f}%")
     print(f"Validation Loss: {val_loss:.4f}")
 
-    conv_indices = get_all_conv_layers(model)
-    weight_list_per_epoch = [[] for _ in conv_indices]
-    for i, layer_idx in enumerate(conv_indices):
-        weight_list_per_epoch[i].append(model[layer_idx].weight.data.clone().cpu())
+    conv_layer_names = get_all_conv_layers(model)
+    named_modules_dict = dict(model.named_modules())
+
+    weight_list_per_epoch = {layer_name: [] for layer_name in conv_layer_names}
+
+    for layer_name in conv_layer_names:
+        if layer_name in named_modules_dict:
+            layer = named_modules_dict[layer_name]
+
+            if hasattr(layer, "weight") and layer.weight is not None:
+                weight_tensor = layer.weight.data.clone().cpu()
+                weight_list_per_epoch[layer_name].append(weight_tensor)
+
     return val_accuracy, val_loss, weight_list_per_epoch
 
 
@@ -201,34 +217,39 @@ def logging(model, history=None, log_dict=None):
             "val_acc": [],
             "total_params": [],
             "total_flops": [],
-            "filters_in_conv1": [],
-            "filters_in_conv2": [],
         }
-        initial_params, initial_flops = count_model_params_flops(model, INPUT_SHAPE)
-        print(f"INITIAL FLOPS: {initial_flops}, INITIAL params : {initial_params}")
+
+    conv_layers = get_all_conv_layers(model)
+    for layer_name in conv_layers:
+        log_dict[f"filters_in_{layer_name}"] = []
 
     best_acc_index = history["val_accuracy"].index(max(history["val_accuracy"]))
     log_dict["train_loss"].append(history["loss"][best_acc_index])
     log_dict["train_acc"].append(history["accuracy"][best_acc_index])
     log_dict["val_loss"].append(history["val_loss"][best_acc_index])
     log_dict["val_acc"].append(history["val_accuracy"][best_acc_index])
-    a, b = count_model_params_flops(model, INPUT_SHAPE)
-    log_dict["total_params"].append(a)
-    log_dict["total_flops"].append(b)
+
+    total_params, total_flops = count_model_params_flops(model, INPUT_SHAPE)
+    log_dict["total_params"].append(total_params)
+    log_dict["total_flops"].append(total_flops)
+
     if log_dict is not None:
-        print(f"Current FLOPS: {b}, Current params : {a}")
-    log_dict["filters_in_conv1"].append(model[0].out_channels)
-    log_dict["filters_in_conv2"].append(model[2].out_channels)
+        print(f"Current FLOPS: {total_flops}, Current params : {total_params}")
+
+    # Dynamically log filter counts for all convolutional layers
+    for layer_name in log_dict.keys():
+        if layer_name.startswith("filters_in_"):
+            conv_layer_name = layer_name.replace("filters_in_", "")
+            conv_layer = dict(model.named_modules()).get(conv_layer_name)
+            if conv_layer:
+                log_dict[layer_name].append(conv_layer.out_channels)
 
     print("Validation accuracy ", max(history["val_accuracy"]))
 
     return log_dict
 
 
-model = densenet121(pretrained=False).to(device)
-# model.load_state_dict(
-#     torch.load(os.path.join(os.getcwd(), "models", "lenet_best.pth"), weights_only=True)
-# )
+model = densenet121().to(device)
 DG = tp.DependencyGraph().build_dependency(
     model, example_inputs=torch.randn(INPUT_SHAPE).to(device)
 )
@@ -245,8 +266,6 @@ log_dict = logging(model, history)
 
 max_val_acc = validation_accuracy
 count = 0
-a, b = count_model_params_flops(model, INPUT_SHAPE)
-print(a, b)
 
 print("STARTED PRUNING PROCESS")
 
@@ -262,7 +281,7 @@ while validation_accuracy - max_val_acc >= -1:
     print(f"MAX VALIDATION ACCURACY = {max_val_acc}")
 
     if count < 1:
-        optimize(model, weight_list_per_epoch, 1, PRUNE_PER_LAYER)
+        optimize(model, weight_list_per_epoch, 0, PRUNE_PER_LAYER)
         model = delete_filters(
             model,
             weight_list_per_epoch,
@@ -271,7 +290,6 @@ while validation_accuracy - max_val_acc >= -1:
             input_shape=INPUT_SHAPE,
         )
         model, history, weight_list_per_epoch = train(model, 1)
-        print(model)
 
     elif count < 2:
         optimize(model, weight_list_per_epoch, 1, PRUNE_PER_LAYER)
@@ -367,4 +385,4 @@ model, history, weight_list_per_epoch = train(model, 30, learning_rate=0.001)
 log_dict = logging(model, history, log_dict)
 
 log_df = pd.DataFrame(log_dict)
-log_df.to_csv(os.path.join(".", "results", "densenet121_cifar10.csv"))
+log_df.to_csv(os.path.join(".", "results", "vgg16_cifar10.csv"))

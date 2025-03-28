@@ -93,7 +93,7 @@ def _vgg(arch, cfg, batch_norm, pretrained, progress, device, **kwargs):
     if pretrained:
         script_dir = os.path.dirname(__file__)
         state_dict = torch.load(
-            os.path.join(script_dir, "models", "vgg16.pt"),
+            os.path.join(script_dir, "weights", "vgg16.pt"),
             weights_only=True,
             map_location=device,
         )

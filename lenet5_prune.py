@@ -1,20 +1,22 @@
-from torchvision import datasets, transforms
+import multiprocessing
+import os
+
+import pandas as pd
+import torch
+import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import torch_pruning as tp
-import multiprocessing
-import torch.nn as nn
+from torchvision import datasets, transforms
 from tqdm import tqdm
-import pandas as pd
-from utils import *
-import torch
-import os
 
+from utils import *
 
 BATCH_SIZE = 128
 INPUT_SHAPE = (BATCH_SIZE, 1, 28, 28)
 NO_PRUNING_LIMIT = 8
 PRUNE_PER_LAYER = [2, 4]
+
 
 def LeNet5():
     return nn.Sequential(
@@ -29,12 +31,17 @@ def LeNet5():
         nn.Softmax(dim=1),
     )
 
+
 num_workers = multiprocessing.cpu_count()
 transform = transforms.Compose(
     [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
 )
-train_dataset = datasets.MNIST(dataset_path, train=True, download=True, transform=transform)
-test_dataset = datasets.MNIST(dataset_path, train=False, download=True, transform=transform)
+train_dataset = datasets.MNIST(
+    dataset_path, train=True, download=True, transform=transform
+)
+test_dataset = datasets.MNIST(
+    dataset_path, train=False, download=True, transform=transform
+)
 
 train_loader = torch.utils.data.DataLoader(
     train_dataset,
@@ -70,7 +77,7 @@ def optimize(model, weight_list_per_epoch, epochs, num_filter_pairs_to_prune_per
         train_loss = 0
         correct = 0
         progress_bar = tqdm(
-            train_loader, desc=f"Optimizing {epoch+1}/{epochs}", leave=True
+            train_loader, desc=f"Optimizing {epoch + 1}/{epochs}", leave=True
         )
 
         for data, target in progress_bar:
@@ -125,7 +132,9 @@ def train(model, epochs, learning_rate=0.001):
         model.train()
         train_loss = 0
         correct = 0
-        progress_bar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs}", leave=True)
+        progress_bar = tqdm(
+            train_loader, desc=f"Epoch {epoch + 1}/{epochs}", leave=True
+        )
 
         for data, target in progress_bar:
             optimizer.zero_grad()
@@ -266,7 +275,11 @@ while validation_accuracy - max_val_acc >= -1:
     if count < 1:
         optimize(model, weight_list_per_epoch, 1, PRUNE_PER_LAYER)
         model = delete_filters(
-            model, weight_list_per_epoch, PRUNE_PER_LAYER, input_shape=INPUT_SHAPE, DG=DG
+            model,
+            weight_list_per_epoch,
+            PRUNE_PER_LAYER,
+            input_shape=INPUT_SHAPE,
+            DG=DG,
         )
         model, history, weight_list_per_epoch = train(model, 1)
         print(model)
@@ -274,42 +287,66 @@ while validation_accuracy - max_val_acc >= -1:
     elif count < 2:
         optimize(model, weight_list_per_epoch, 1, PRUNE_PER_LAYER)
         model = delete_filters(
-            model, weight_list_per_epoch, PRUNE_PER_LAYER, input_shape=INPUT_SHAPE, DG=DG
+            model,
+            weight_list_per_epoch,
+            PRUNE_PER_LAYER,
+            input_shape=INPUT_SHAPE,
+            DG=DG,
         )
         model, history, weight_list_per_epoch = train(model, 1)
 
     elif count < 3:
         optimize(model, weight_list_per_epoch, 1, PRUNE_PER_LAYER)
         model = delete_filters(
-            model, weight_list_per_epoch, PRUNE_PER_LAYER, input_shape=INPUT_SHAPE, DG=DG
+            model,
+            weight_list_per_epoch,
+            PRUNE_PER_LAYER,
+            input_shape=INPUT_SHAPE,
+            DG=DG,
         )
         model, history, weight_list_per_epoch = train(model, 1)
 
     elif count < 4:
         optimize(model, weight_list_per_epoch, 1, PRUNE_PER_LAYER)
         model = delete_filters(
-            model, weight_list_per_epoch, PRUNE_PER_LAYER, input_shape=INPUT_SHAPE, DG=DG
+            model,
+            weight_list_per_epoch,
+            PRUNE_PER_LAYER,
+            input_shape=INPUT_SHAPE,
+            DG=DG,
         )
         model, history, weight_list_per_epoch = train(model, 1)
 
     elif count < 5:
         optimize(model, weight_list_per_epoch, 1, PRUNE_PER_LAYER)
         model = delete_filters(
-            model, weight_list_per_epoch, PRUNE_PER_LAYER, input_shape=INPUT_SHAPE, DG=DG
+            model,
+            weight_list_per_epoch,
+            PRUNE_PER_LAYER,
+            input_shape=INPUT_SHAPE,
+            DG=DG,
         )
         model, history, weight_list_per_epoch = train(model, 1)
 
     elif count < 10:
         optimize(model, weight_list_per_epoch, 1, PRUNE_PER_LAYER)
         model = delete_filters(
-            model, weight_list_per_epoch, PRUNE_PER_LAYER, input_shape=INPUT_SHAPE, DG=DG
+            model,
+            weight_list_per_epoch,
+            PRUNE_PER_LAYER,
+            input_shape=INPUT_SHAPE,
+            DG=DG,
         )
         model, history, weight_list_per_epoch = train(model, 1)
 
     else:
         optimize(model, weight_list_per_epoch, 10, PRUNE_PER_LAYER)
         model = delete_filters(
-            model, weight_list_per_epoch, PRUNE_PER_LAYER, input_shape=INPUT_SHAPE, DG=DG
+            model,
+            weight_list_per_epoch,
+            PRUNE_PER_LAYER,
+            input_shape=INPUT_SHAPE,
+            DG=DG,
         )
         model, history, weight_list_per_epoch = train(model, 10)
 

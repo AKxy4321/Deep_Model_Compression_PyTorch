@@ -1,6 +1,7 @@
-import torch.nn as nn
-import torch
 import os
+
+import torch
+import torch.nn as nn
 
 
 def conv3x3(in_planes, out_planes, stride=1, groups=1, dilation=1):
@@ -205,7 +206,11 @@ def _resnet(arch, block, layers, pretrained, progress, device, **kwargs):
     model = ResNet(block, layers, **kwargs)
     if pretrained:
         script_dir = os.path.dirname(__file__)
-        state_dict = torch.load(os.path.join(script_dir, "models", "resnet50.pt"), weights_only=True, map_location=device)
+        state_dict = torch.load(
+            os.path.join(script_dir, "weights", "resnet50.pt"),
+            weights_only=True,
+            map_location=device,
+        )
         model.load_state_dict(state_dict)
     return model
 

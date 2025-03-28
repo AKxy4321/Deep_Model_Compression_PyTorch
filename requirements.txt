@@ -1,9 +1,7 @@
-torch
-torchvision
-pandas
-
-matplotlib
+torch-pruning
 scikit-learn
 torchprofile
+torchvision
+pandas
+torch
 tqdm
-torch-pruning
