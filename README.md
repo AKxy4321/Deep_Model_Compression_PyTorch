@@ -4,12 +4,13 @@ This project implements **structured pruning** to reduce the size of deep neural
 ## **Project Structure**
 ```
 Deep_Model_Compression_PyTorch/
-│── models/          # Model definitions (LeNet5, VGG16, ResNet50, DenseNet121)
-│── weights/         # Pretrained and pruned model weights
-│── train/           # Training scripts for different architectures
-│── densenet121_prune.py  # Pruning script for DenseNet121
-│── utils.py         # Helper functions
-│── README.md        # Project documentation
+│── models/                  # Model definitions (LeNet5, VGG16, ResNet50, DenseNet121)
+│── weights/                 # Pretrained and pruned model weights
+│── train/                   # Training scripts for different architectures
+│── densenet121_prune.py     # Pruning script for DenseNet121
+│── pruning_utils.py         # Helper functions
+|── train_eval_optimise.py   # Contains train, optimise and evaluate functions
+│── README.md                # Project documentation
 ```
 
 ## **Installation**
