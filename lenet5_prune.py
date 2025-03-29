@@ -17,7 +17,7 @@ from train_eval_optimise import config, evaluate, optimize, train
 BATCH_SIZE = 128
 INPUT_SHAPE = (BATCH_SIZE, 1, 28, 28)
 NO_PRUNING_LIMIT = 8
-PRUNE_PER_LAYER = [5, 10]
+PRUNE_PER_LAYER = [2, 4]
 MIN_FILTERS_PER_LAYER = [2, 3]
 
 
