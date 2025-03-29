@@ -13,7 +13,7 @@ import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 
-from utils import *
+from pruning_utils import dataset_path
 
 
 # Define the LeNet model

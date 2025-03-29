@@ -11,11 +11,11 @@ import torch.nn as nn
 import torch.optim as optim
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
-from model_vgg16 import vgg16
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from utils import *
+from models.model_vgg16 import vgg16
+from pruning_utils import dataset_path
 
 # Hyperparameters
 batch_size = 128
