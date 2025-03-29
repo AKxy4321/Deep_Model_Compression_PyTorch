@@ -6,24 +6,26 @@ sys.path.append(
 )  # Add parent directory to sys.path
 
 import torch
+
+# Define the LeNet model
 import torch.nn as nn
 import torch.optim as optim
 
 from train.train_config import device, train_config
 
 
-# Define the LeNet model
 def LeNet5():
     return nn.Sequential(
-        nn.Conv2d(in_channels=1, out_channels=20, kernel_size=5, stride=2, bias=False),
+        nn.Conv2d(in_channels=1, out_channels=20, kernel_size=5, bias=True),
         nn.ReLU(),
-        nn.Conv2d(in_channels=20, out_channels=50, kernel_size=5, stride=2, bias=False),
+        nn.MaxPool2d(kernel_size=2, stride=2),
+        nn.Conv2d(in_channels=20, out_channels=50, kernel_size=5, bias=True),
         nn.ReLU(),
+        nn.MaxPool2d(kernel_size=2, stride=2),
         nn.Flatten(),
         nn.Linear(in_features=50 * 4 * 4, out_features=500),
         nn.ReLU(),
         nn.Linear(in_features=500, out_features=10),
-        nn.Softmax(dim=1),
     )
 
 
@@ -36,6 +38,9 @@ patience = 10
 
 # Initialize model, loss, and optimizer
 model = LeNet5().to(device)
+# model.load_state_dict(
+#     torch.load(os.path.join(os.getcwd(), "weights", "lenet5.pt"), weights_only=True)
+# )
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
