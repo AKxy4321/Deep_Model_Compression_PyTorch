@@ -1,6 +1,6 @@
-import math
 import os
 from itertools import combinations
+from math import isqrt
 
 import numpy as np
 import torch
@@ -14,7 +14,7 @@ dataset_path = os.path.join(os.getcwd(), "data")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def get_all_layers(module, layer_type, prefix=""):
+def get_all_layers(module, layer_type, prefix="") -> list:
     layers = []
     for name, child in module.named_children():
         current_name = f"{prefix}.{name}" if prefix else name
@@ -24,15 +24,15 @@ def get_all_layers(module, layer_type, prefix=""):
     return layers
 
 
-def get_all_conv_layers(model):
+def get_all_conv_layers(model) -> list:
     return get_all_layers(model, nn.Conv2d)
 
 
-def get_all_dense_layers(model):
+def get_all_dense_layers(model) -> list:
     return get_all_layers(model, nn.Linear)
 
 
-def get_weights_in_conv_layers(model):
+def get_weights_in_conv_layers(model) -> list:
     """
     Fetches the weights of all convolutional layers in the model.
 
@@ -57,7 +57,7 @@ def get_weights_in_conv_layers(model):
     return weights
 
 
-def get_cosine_sims_filters_per_epoch(weight_list_per_epoch):
+def get_cosine_sims_filters_per_epoch(weight_list_per_epoch: dict) -> dict:
     """
     Computes pairwise cosine similarity sums for filters of each layer.
     Assumes weight_list_per_epoch is a dict {layer_name: [tensor_per_epoch, ...]}.
@@ -93,7 +93,9 @@ def get_cosine_sims_filters_per_epoch(weight_list_per_epoch):
     return sorted_filter_pair_sum
 
 
-def get_filter_pruning_indices(filter_pairs, l1_norms, num_filter_pairs_to_prune):
+def get_filter_pruning_indices(
+    filter_pairs, l1_norms, num_filter_pairs_to_prune: int
+) -> list:
     """
     Given a list of filter pairs, corresponding L1 norms, and the desired number of pairs,
     selects one filter from each pair to prune based on the lower L1 norm.
@@ -130,7 +132,7 @@ def get_filter_pruning_indices(filter_pairs, l1_norms, num_filter_pairs_to_prune
 
 def find_pruning_indices(
     model,
-    weight_list_per_epoch,
+    weight_list_per_epoch: dict,
     num_filter_pairs_to_prune_per_layer: list,
     min_filters_per_layer: list,
 ):
@@ -165,7 +167,7 @@ def find_pruning_indices(
     # Process layers in the order of sorted_filter_pair_sums keys
     for i, (layer_name, filter_pairs) in enumerate(all_layer_filter_pairs.items()):
         z = len(filter_pairs)
-        total_filters_in_layer = (1 + math.isqrt(1 + 8 * z)) // 2
+        total_filters_in_layer = (1 + isqrt(1 + 8 * z)) // 2
         min_filters = min_filters_per_layer[i]
         max_prunable = total_filters_in_layer - min_filters
         num_to_prune = min(num_filter_pairs_to_prune_per_layer[i], max_prunable)
@@ -179,7 +181,7 @@ def find_pruning_indices(
     return all_layer_pruning_indices, all_layer_filter_pairs
 
 
-def get_l1_norms(model):
+def get_l1_norms(model) -> dict:
     conv_layers = get_all_conv_layers(model)
     named_modules_dict = dict(model.named_modules())
     l1_norm_matrix_dict = {}
@@ -193,7 +195,7 @@ def get_l1_norms(model):
     return l1_norm_matrix_dict
 
 
-def count_parameters(model):
+def count_parameters(model) -> int:
     return sum(p.numel() for p in model.parameters())
 
 
@@ -220,7 +222,7 @@ class Get_Weights:
             self.weight_list[index].append(each_weight)
 
 
-def get_cosine_sims_filters(model):
+def get_cosine_sims_filters(model) -> dict:
     conv_layers = get_all_conv_layers(model)  # e.g., ['features.0', 'features.3', ...]
     cosine_sums = {}
     named_modules_dict = dict(model.named_modules())
@@ -240,7 +242,7 @@ def get_cosine_sims_filters(model):
 
 def delete_filters(
     model,
-    weight_list_per_epoch,
+    weight_list_per_epoch: dict,
     num_filter_pairs_to_prune_per_layer: list,
     min_filters_per_layer: list,
     input_shape=None,
@@ -289,7 +291,7 @@ def delete_filters(
 
 def get_regularizer_value(
     model,
-    weight_list_per_epoch,
+    weight_list_per_epoch: dict,
     num_filter_pairs_to_prune_per_layer: list,
 ):
     min_filters_per_layer = [0 for i in num_filter_pairs_to_prune_per_layer]
@@ -314,14 +316,14 @@ def get_regularizer_value(
     return regularizer_value
 
 
-def custom_loss(lmbda, regularizer_value):
+def custom_loss(lmbda: float, regularizer_value: float):
     def loss(y_true, y_pred):
         return F.cross_entropy(y_pred, y_true) + lmbda * regularizer_value
 
     return loss
 
 
-def logging(model, history=None, log_dict=None, INPUT_SHAPE=None):
+def logging(model, history=None, log_dict=None, INPUT_SHAPE=None) -> dict:
     if log_dict is None:
         log_dict = {
             "train_loss": [],
