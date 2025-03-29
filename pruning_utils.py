@@ -334,9 +334,9 @@ def logging(model, history=None, log_dict=None, INPUT_SHAPE=None) -> dict:
             "total_flops": [],
         }
 
-    conv_layers = get_all_conv_layers(model)
-    for layer_name in conv_layers:
-        log_dict[f"filters_in_{layer_name}"] = []
+        conv_layers = get_all_conv_layers(model)
+        for layer_name in conv_layers:
+            log_dict[f"filters_in_{layer_name}"] = []
 
     best_acc_index = history["val_accuracy"].index(max(history["val_accuracy"]))
     log_dict["train_loss"].append(history["loss"][best_acc_index])
@@ -359,6 +359,7 @@ def logging(model, history=None, log_dict=None, INPUT_SHAPE=None) -> dict:
             if conv_layer:
                 log_dict[layer_name].append(conv_layer.out_channels)
 
+    print(log_dict)
     print("Validation accuracy ", max(history["val_accuracy"]))
 
     return log_dict

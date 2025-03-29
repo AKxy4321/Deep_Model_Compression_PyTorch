@@ -100,10 +100,5 @@ log_dict = logging(model, history, log_dict, INPUT_SHAPE=INPUT_SHAPE)
 
 torch.save(model, os.path.join(os.getcwd(), "results", "vgg16_pruned.pt"))
 
-max_length = max(len(v) for v in log_dict.values())
-
-# Pad shorter lists with NaN
-log_dict = {k: v + [np.nan] * (max_length - len(v)) for k, v in log_dict.items()}
-
 log_df = pd.DataFrame(log_dict)
 log_df.to_csv(os.path.join(os.getcwd(), "results", "vgg16_cifar10.csv"))
