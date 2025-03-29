@@ -359,7 +359,7 @@ def logging(model, history=None, log_dict=None, INPUT_SHAPE=None) -> dict:
             if conv_layer:
                 log_dict[layer_name].append(conv_layer.out_channels)
 
-    print(log_dict)
+    # print(log_dict)
     print("Validation accuracy ", max(history["val_accuracy"]))
 
     return log_dict
