@@ -1,5 +1,6 @@
 import os
 
+import numpy as np
 import pandas as pd
 import torch
 import torch_pruning as tp
@@ -87,6 +88,7 @@ while validation_accuracy - max_val_acc >= -5:
 
     # Break Loop if pruning indices == 0
     if stop_flag == 1:
+        print("STOPPED PRUNING: NO MORE FILTERS TO PRUNE")
         break
 
     count += 1
@@ -96,5 +98,12 @@ print(model)
 model, history, weight_list_per_epoch = train(model, 30, learning_rate=0.001)
 log_dict = logging(model, history, log_dict, INPUT_SHAPE=INPUT_SHAPE)
 
+torch.save(model, os.path.join(os.getcwd(), "results", "vgg16_pruned.pt"))
+
+max_length = max(len(v) for v in log_dict.values())
+
+# Pad shorter lists with NaN
+log_dict = {k: v + [np.nan] * (max_length - len(v)) for k, v in log_dict.items()}
+
 log_df = pd.DataFrame(log_dict)
-log_df.to_csv(os.path.join(".", "results", "vgg16_cifar10.csv"))
+log_df.to_csv(os.path.join(os.getcwd(), "results", "vgg16_cifar10.csv"))
