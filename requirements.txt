@@ -1,7 +1,6 @@
 # Python 3.11.11
 
 torch-pruning  #1.5.1
-scikit-learn   #1.6.1
 torchprofile   #0.0.4
 torchvision    #0.20.1
 pandas         #2.2.3

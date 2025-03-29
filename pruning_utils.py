@@ -7,7 +7,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch_pruning as tp
-from sklearn.metrics.pairwise import cosine_similarity
 from torchprofile import profile_macs
 
 dataset_path = os.path.join(os.getcwd(), "data")
@@ -222,20 +221,23 @@ class Get_Weights:
             self.weight_list[index].append(each_weight)
 
 
-def get_cosine_sims_filters(model) -> dict:
+def get_cosine_sims_filters(model, device=None) -> dict:
     conv_layers = get_all_conv_layers(model)  # e.g., ['features.0', 'features.3', ...]
     cosine_sums = {}
     named_modules_dict = dict(model.named_modules())
+
     for layer_name in conv_layers:
         layer = named_modules_dict[layer_name]
         weights = layer.weight.data.to(device)
         num_filters = weights.shape[0]
-        filter_vectors = [weights[i].flatten() for i in range(num_filters)]
-        cosine_sum_list = []
-        for i in range(num_filters):
-            similarities = cosine_similarity([filter_vectors[i]], filter_vectors)[0]
-            cosine_sum_list.append(similarities - 1)
-        cosine_sums[layer_name] = cosine_sum_list
+
+        filter_vectors = weights.view(num_filters, -1)
+        normalized_filters = F.normalize(filter_vectors, p=2, dim=1)
+        cosine_sims = torch.mm(normalized_filters, normalized_filters.T)
+        cosine_sums_per_filter = cosine_sims - torch.eye(
+            num_filters, device=weights.device
+        )
+        cosine_sums[layer_name] = [row.tolist() for row in cosine_sums_per_filter]
 
     return cosine_sums
 
