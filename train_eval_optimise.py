@@ -219,7 +219,7 @@ def train(model, epochs, learning_rate=0.001):
 
     # Load the best model before returning
     if os.path.exists(best_model_path):
-        model.load_state_dict(torch.load(best_model_path))
+        model.load_state_dict(torch.load(best_model_path), weights_only=True)
         print("Best model weights loaded before returning!")
 
     return model, history, weight_list_per_epoch
