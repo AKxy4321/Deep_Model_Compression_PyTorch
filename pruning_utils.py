@@ -49,10 +49,10 @@ def get_weights_in_conv_layers(model) -> list:
 
     for layer_name in all_conv_layers:
         if isinstance(layer_name, int):  # For Sequential models
-            weights.append(model[layer_name].weight.data)
+            weights.append(model[layer_name].weight.data.to(device))
         else:  # For general nn.Module models
             layer = dict(model.named_modules())[layer_name]
-            weights.append(layer.weight.data)
+            weights.append(layer.weight.data.to(device))
 
     return weights
 
@@ -189,7 +189,7 @@ def get_l1_norms(model) -> dict:
     for layer_name in conv_layers:
         layer = named_modules_dict.get(layer_name)
         if hasattr(layer, "weight") and layer.weight is not None:
-            abs_weights = layer.weight.data.abs()
+            abs_weights = layer.weight.data.to(device).abs()
             l1_norm_matrix_dict[layer_name] = torch.sum(abs_weights, dim=(1, 2, 3))
 
     return l1_norm_matrix_dict
@@ -228,7 +228,7 @@ def get_cosine_sims_filters(model) -> dict:
     named_modules_dict = dict(model.named_modules())
     for layer_name in conv_layers:
         layer = named_modules_dict[layer_name]
-        weights = layer.weight.data.cpu().numpy()
+        weights = layer.weight.data.to(device)
         num_filters = weights.shape[0]
         filter_vectors = [weights[i].flatten() for i in range(num_filters)]
         cosine_sum_list = []
@@ -322,8 +322,7 @@ def custom_loss(lmbda: float, regularizer_value: float):
     ).detach()  # Convert once, detach from gradients
 
     def loss(y_true, y_pred):
-        reg_term_device = reg_term.to(device)
-        return F.cross_entropy(y_pred, y_true) + lmbda * reg_term_device
+        return F.cross_entropy(y_pred, y_true) + lmbda * reg_term
 
     return loss
 

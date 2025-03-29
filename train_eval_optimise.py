@@ -189,7 +189,7 @@ def train(model, epochs, learning_rate=0.001):
             layer = named_modules_dict[layer_name]
 
             if hasattr(layer, "weight") and layer.weight is not None:
-                weight_tensor = layer.weight.data.clone().cpu()
+                weight_tensor = layer.weight.data.clone().to(device)
                 weight_list_per_epoch[layer_name].append(weight_tensor)
 
         model.eval()
@@ -242,7 +242,7 @@ def evaluate(model):
             layer = named_modules_dict[layer_name]
 
             if hasattr(layer, "weight") and layer.weight is not None:
-                weight_tensor = layer.weight.data.clone().cpu()
+                weight_tensor = layer.weight.data.clone().to(device)
                 weight_list_per_epoch[layer_name].append(weight_tensor)
 
     return val_accuracy, val_loss, weight_list_per_epoch
