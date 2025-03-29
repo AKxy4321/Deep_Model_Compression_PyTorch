@@ -16,7 +16,7 @@ from train_eval_optimise import config, evaluate, optimize, train
 BATCH_SIZE = 128
 INPUT_SHAPE = (BATCH_SIZE, 1, 28, 28)
 NO_PRUNING_LIMIT = 8
-PRUNE_PER_LAYER = [2, 5]
+PRUNE_PER_LAYER = [5, 10]
 MIN_FILTERS_PER_LAYER = [2, 3]
 
 
@@ -102,8 +102,8 @@ initial_parameters = sum(p.numel() for p in model.parameters())
 while validation_accuracy - max_val_acc >= -1:
     current_parameters = sum(p.numel() for p in model.parameters())
     print("ITERATION {} ".format(count + 1))
-    if max_val_acc < validation_accuracy:
-        max_val_acc = validation_accuracy
+    # if max_val_acc < validation_accuracy:
+    #     max_val_acc = validation_accuracy
 
     print(f"MAX VALIDATION ACCURACY = {max_val_acc}")
 

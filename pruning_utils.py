@@ -239,10 +239,10 @@ def delete_filters(
 
     print("PRUNING STARTED")
     filter_pruning_indices, _ = find_pruning_indices(
-        model,
-        weight_list_per_epoch,
-        num_filter_pairs_to_prune_per_layer,
-        min_filters_per_layer,
+        model=model,
+        weight_list_per_epoch=weight_list_per_epoch,
+        num_filter_pairs_to_prune_per_layer=num_filter_pairs_to_prune_per_layer,
+        min_filters_per_layer=min_filters_per_layer,
     )
     all_conv_layers = get_all_conv_layers(model)
     layers = dict(model.named_modules())
@@ -274,10 +274,16 @@ def delete_filters(
 
 
 def get_regularizer_value(
-    model, weight_list_per_epoch, num_filter_pairs_to_prune_per_layer
+    model,
+    weight_list_per_epoch,
+    num_filter_pairs_to_prune_per_layer: list,
 ):
+    min_filters_per_layer = [0 for i in num_filter_pairs_to_prune_per_layer]
     _, filter_pairs_dict = find_pruning_indices(
-        model, weight_list_per_epoch, num_filter_pairs_to_prune_per_layer
+        model,
+        weight_list_per_epoch,
+        num_filter_pairs_to_prune_per_layer,
+        min_filters_per_layer,
     )
     cosine_sims_dict = get_cosine_sims_filters(model)
 
