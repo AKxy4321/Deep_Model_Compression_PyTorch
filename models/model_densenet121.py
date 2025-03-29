@@ -183,9 +183,8 @@ def _densenet(
 ):
     model = DenseNet(growth_rate, block_config, num_init_features, **kwargs)
     if pretrained:
-        script_dir = os.path.dirname(__file__)
         state_dict = torch.load(
-            os.path.join(script_dir, "weights", "densenet121.pt"),
+            os.path.join(os.getcwd(), "weights", "densenet121.pt"),
             weights_only=True,
             map_location=device,
         )

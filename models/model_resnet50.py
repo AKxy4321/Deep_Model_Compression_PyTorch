@@ -205,9 +205,8 @@ class ResNet(nn.Module):
 def _resnet(arch, block, layers, pretrained, progress, device, **kwargs):
     model = ResNet(block, layers, **kwargs)
     if pretrained:
-        script_dir = os.path.dirname(__file__)
         state_dict = torch.load(
-            os.path.join(script_dir, "weights", "resnet50.pt"),
+            os.path.join(os.getcwd(), "weights", "resnet50.pt"),
             weights_only=True,
             map_location=device,
         )

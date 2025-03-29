@@ -91,9 +91,8 @@ def _vgg(arch, cfg, batch_norm, pretrained, progress, device, **kwargs):
         kwargs["init_weights"] = False
     model = VGG(make_layers(cfgs[cfg], batch_norm=batch_norm), **kwargs)
     if pretrained:
-        script_dir = os.path.dirname(__file__)
         state_dict = torch.load(
-            os.path.join(script_dir, "weights", "vgg16.pt"),
+            os.path.join(os.getcwd(), "weights", "vgg16.pt"),
             weights_only=True,
             map_location=device,
         )
