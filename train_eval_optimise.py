@@ -70,21 +70,30 @@ def config(BATCH_SIZE, dataset=1):
 def optimize(model, weight_list_per_epoch, epochs, num_filter_pairs_to_prune_per_layer):
     global test_loader, train_loader
 
-    regularizer_value = get_regularizer_value(
-        model, weight_list_per_epoch, num_filter_pairs_to_prune_per_layer
-    )
-    print("INITIAL REGULARIZER VALUE ", regularizer_value)
-
-    criterion = custom_loss(lmbda=0.1, regularizer_value=regularizer_value)
     optimizer = optim.Adam(model.parameters(), lr=0.001)
-
-    history = {"loss": [], "accuracy": [], "val_loss": [], "val_accuracy": []}
+    history = {
+        "loss": [],
+        "accuracy": [],
+        "val_loss": [],
+        "val_accuracy": [],
+    }
 
     print("OPTIMISING MODEL")
     for epoch in range(epochs):
+        # Compute regularizer value for this epoch
+        regularizer_value = get_regularizer_value(
+            model, weight_list_per_epoch, num_filter_pairs_to_prune_per_layer
+        )
+        print(f"Epoch {epoch + 1}/{epochs} - Regularizer Value: {regularizer_value}")
+
+        # Update loss function with new regularizer value
+        criterion = custom_loss(lmbda=0.1, regularizer_value=regularizer_value)
+
         model.train()
         train_loss = 0
         correct = 0
+        total_samples = 0
+
         progress_bar = tqdm(
             train_loader, desc=f"Optimizing {epoch + 1}/{epochs}", leave=True
         )
@@ -98,9 +107,12 @@ def optimize(model, weight_list_per_epoch, epochs, num_filter_pairs_to_prune_per
             optimizer.step()
 
             train_loss += loss.item()
-            pred = output.argmax(dim=1, keepdim=True)
-            correct += pred.eq(target.view_as(pred)).sum().item()
-            progress_bar.set_postfix(loss=train_loss / len(train_loader.dataset))
+            correct += (output.argmax(1) == target).sum().item()
+            total_samples += target.size(0)
+            progress_bar.set_postfix(
+                loss=train_loss / total_samples,
+                acc=100.0 * correct / total_samples,
+            )
 
         train_loss /= len(train_loader.dataset)
         accuracy = 100.0 * correct / len(train_loader.dataset)
@@ -115,8 +127,7 @@ def optimize(model, weight_list_per_epoch, epochs, num_filter_pairs_to_prune_per
                 data, target = data.to(device), target.to(device)
                 output = model(data)
                 val_loss += criterion(target, output).item()
-                pred = output.argmax(dim=1, keepdim=True)
-                correct += pred.eq(target.view_as(pred)).sum().item()
+                correct += (output.argmax(1) == target).sum().item()
 
         val_loss /= len(test_loader.dataset)
         val_accuracy = 100.0 * correct / len(test_loader.dataset)
@@ -145,6 +156,8 @@ def train(model, epochs, learning_rate=0.001):
         model.train()
         train_loss = 0
         correct = 0
+        total_samples = 0
+
         progress_bar = tqdm(
             train_loader, desc=f"Epoch {epoch + 1}/{epochs}", leave=True
         )
@@ -158,10 +171,13 @@ def train(model, epochs, learning_rate=0.001):
             optimizer.step()
 
             train_loss += loss.item()
-            pred = output.argmax(dim=1, keepdim=True)
-            correct += pred.eq(target.view_as(pred)).sum().item()
+            correct += (output.argmax(1) == target).sum().item()
+            total_samples += target.size(0)
 
-            progress_bar.set_postfix(loss=train_loss / len(train_loader.dataset))
+            progress_bar.set_postfix(
+                loss=train_loss / total_samples,
+                acc=100.0 * correct / total_samples,
+            )
 
         train_loss /= len(train_loader.dataset)
         accuracy = 100.0 * correct / len(train_loader.dataset)
@@ -184,8 +200,7 @@ def train(model, epochs, learning_rate=0.001):
                 data, target = data.to(device), target.to(device)
                 output = model(data)
                 val_loss += criterion(output, target).item()
-                pred = output.argmax(dim=1, keepdim=True)
-                correct += pred.eq(target.view_as(pred)).sum().item()
+                correct += (output.argmax(1) == target).sum().item()
 
         val_loss /= len(test_loader.dataset)
         val_accuracy = 100.0 * correct / len(test_loader.dataset)

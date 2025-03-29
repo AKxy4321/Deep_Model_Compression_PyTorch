@@ -306,19 +306,24 @@ def get_regularizer_value(
     regularizer_value = 0
     for layer_name, layer in filter_pairs_dict.items():
         for episode in layer:
-            regularizer_value += abs(
+            regularizer_value += np.abs(
                 np.sum(cosine_sims_dict[layer_name][episode[1]])
                 - np.sum(cosine_sims_dict[layer_name][episode[0]])
             )
 
     regularizer_value = np.exp(regularizer_value)
-    print(regularizer_value)
+    # print(regularizer_value)
     return regularizer_value
 
 
 def custom_loss(lmbda: float, regularizer_value: float):
+    reg_term = torch.tensor(
+        regularizer_value, device=device
+    ).detach()  # Convert once, detach from gradients
+
     def loss(y_true, y_pred):
-        return F.cross_entropy(y_pred, y_true) + lmbda * regularizer_value
+        reg_term_device = reg_term.to(device)
+        return F.cross_entropy(y_pred, y_true) + lmbda * reg_term_device
 
     return loss
 
