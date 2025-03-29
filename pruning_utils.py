@@ -89,7 +89,7 @@ def get_cosine_sims_filters_per_epoch(weight_list_per_epoch):
             )
         )
 
-    print(f"NUM FILTERS: {num_filters_model}")
+    print(f"NUM FILTERS BEFORE PRUNING: {num_filters_model}")
     return sorted_filter_pair_sum
 
 
@@ -106,14 +106,26 @@ def get_filter_pruning_indices(filter_pairs, l1_norms, num_filter_pairs_to_prune
     Returns:
         list: Indices of filters selected for pruning.
     """
+    num_filter_pairs_to_prune = min(len(filter_pairs), num_filter_pairs_to_prune)
     filter_pruning_indices = set()
-    for i in range(num_filter_pairs_to_prune):
+    i = 0
+
+    while len(filter_pruning_indices) < num_filter_pairs_to_prune and i < len(
+        filter_pairs
+    ):
         filter1, filter2 = filter_pairs[i]
+        i += 1
+
+        # Ensure we don't prune the same filter pair twice **within this layer**
+        if filter1 in filter_pruning_indices or filter2 in filter_pruning_indices:
+            continue  # Skip if either filter is already pruned
+
         if l1_norms[filter1] > l1_norms[filter2]:
             filter_pruning_indices.add(filter2)
         else:
             filter_pruning_indices.add(filter1)
-    return list(filter_pruning_indices)
+
+    return sorted(list(filter_pruning_indices))
 
 
 def find_pruning_indices(
@@ -247,19 +259,15 @@ def delete_filters(
     all_conv_layers = get_all_conv_layers(model)
     layers = dict(model.named_modules())
 
+    all_layers_empty = True
+
+    num_filters_model = []
     for layer_name in all_conv_layers:
         layer = layers[layer_name]
         prune_indices = filter_pruning_indices[layer_name]
 
-        # Skip pruning if minimum number of
-        if layer.out_channels <= 2:
-            print(
-                f"Skipping pruning for {layer_name} as it has only {layer.out_channels} filters"
-            )
-            continue
-
-        if len(prune_indices) == 0:
-            continue
+        if len(prune_indices) > 0:
+            all_layers_empty = False
 
         if isinstance(layer, nn.Conv2d):
             group = DG.get_pruning_group(
@@ -270,7 +278,13 @@ def delete_filters(
             else:
                 print("invalid to prune more")
 
-    return model
+            num_filters_model.append(layer.out_channels)
+
+    if all_layers_empty:
+        return model, 1
+
+    print(f"NUM FILTERS AFTER PRUNING: {num_filters_model}")
+    return model, 0
 
 
 def get_regularizer_value(
@@ -307,8 +321,7 @@ def custom_loss(lmbda, regularizer_value):
     return loss
 
 
-def logging(model, history=None, log_dict=None):
-    global INPUT_SHAPE
+def logging(model, history=None, log_dict=None, INPUT_SHAPE=None):
     if log_dict is None:
         log_dict = {
             "train_loss": [],

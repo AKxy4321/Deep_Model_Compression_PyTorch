@@ -1,4 +1,3 @@
-import multiprocessing
 import os
 import sys
 
@@ -9,11 +8,8 @@ sys.path.append(
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torchvision.datasets as datasets
-import torchvision.transforms as transforms
-from torch.utils.data import DataLoader
 
-from pruning_utils import dataset_path
+from train.train_config import device, train_config
 
 
 # Define the LeNet model
@@ -33,38 +29,10 @@ def LeNet5():
 
 # Hyperparameters
 batch_size = 128
+train_loader, test_loader = train_config(batch_size=batch_size, dataset=0)
 epochs = 100
 learning_rate = 0.001
 patience = 10
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-num_workers = multiprocessing.cpu_count()
-
-# Data transformations
-transform = transforms.Compose(
-    [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
-)
-
-# Load MNIST dataset
-train_dataset = datasets.MNIST(
-    root=dataset_path, train=True, download=True, transform=transform
-)
-test_dataset = datasets.MNIST(
-    root=dataset_path, train=False, download=True, transform=transform
-)
-train_loader = DataLoader(
-    train_dataset,
-    batch_size=batch_size,
-    shuffle=True,
-    num_workers=num_workers,
-    pin_memory=True,
-)
-test_loader = DataLoader(
-    test_dataset,
-    batch_size=batch_size,
-    shuffle=False,
-    num_workers=num_workers,
-    pin_memory=True,
-)
 
 # Initialize model, loss, and optimizer
 model = LeNet5().to(device)

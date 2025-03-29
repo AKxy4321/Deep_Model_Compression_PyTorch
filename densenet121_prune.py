@@ -19,7 +19,8 @@ NO_PRUNING_LIMIT = 8
 PRUNE_PER_LAYER = [2] * 120
 
 
-config()
+# Add dataset = 1 so that config chooses CIFAR10 dataset instead of MNIST
+config(BATCH_SIZE=BATCH_SIZE, dataset=1)
 
 
 model = densenet121(pretrained=False).to(device)
@@ -35,7 +36,7 @@ history["accuracy"].append(validation_accuracy)
 history["loss"].append(validation_loss)
 history["val_accuracy"].append(validation_accuracy)
 history["val_loss"].append(validation_loss)
-log_dict = logging(model, history)
+log_dict = logging(model, history, INPUT_SHAPE=INPUT_SHAPE)
 
 max_val_acc = validation_accuracy
 count = 0
@@ -52,83 +53,15 @@ while validation_accuracy - max_val_acc >= -1:
         max_val_acc = validation_accuracy
 
     print(f"MAX VALIDATION ACCURACY = {max_val_acc}")
-
-    if count < 1:
-        optimize(model, weight_list_per_epoch, 0, PRUNE_PER_LAYER)
-        model = delete_filters(
-            model,
-            weight_list_per_epoch,
-            PRUNE_PER_LAYER,
-            DG=DG,
-            input_shape=INPUT_SHAPE,
-        )
-        model, history, weight_list_per_epoch = train(model, 1)
-
-    elif count < 2:
-        optimize(model, weight_list_per_epoch, 1, PRUNE_PER_LAYER)
-        model = delete_filters(
-            model,
-            weight_list_per_epoch,
-            PRUNE_PER_LAYER,
-            DG=DG,
-            input_shape=INPUT_SHAPE,
-        )
-        model, history, weight_list_per_epoch = train(model, 1)
-
-    elif count < 3:
-        optimize(model, weight_list_per_epoch, 1, PRUNE_PER_LAYER)
-        model = delete_filters(
-            model,
-            weight_list_per_epoch,
-            PRUNE_PER_LAYER,
-            DG=DG,
-            input_shape=INPUT_SHAPE,
-        )
-        model, history, weight_list_per_epoch = train(model, 1)
-
-    elif count < 4:
-        optimize(model, weight_list_per_epoch, 1, PRUNE_PER_LAYER)
-        model = delete_filters(
-            model,
-            weight_list_per_epoch,
-            PRUNE_PER_LAYER,
-            DG=DG,
-            input_shape=INPUT_SHAPE,
-        )
-        model, history, weight_list_per_epoch = train(model, 1)
-
-    elif count < 5:
-        optimize(model, weight_list_per_epoch, 1, PRUNE_PER_LAYER)
-        model = delete_filters(
-            model,
-            weight_list_per_epoch,
-            PRUNE_PER_LAYER,
-            DG=DG,
-            input_shape=INPUT_SHAPE,
-        )
-        model, history, weight_list_per_epoch = train(model, 1)
-
-    elif count < 10:
-        optimize(model, weight_list_per_epoch, 1, PRUNE_PER_LAYER)
-        model = delete_filters(
-            model,
-            weight_list_per_epoch,
-            PRUNE_PER_LAYER,
-            DG=DG,
-            input_shape=INPUT_SHAPE,
-        )
-        model, history, weight_list_per_epoch = train(model, 1)
-
-    else:
-        optimize(model, weight_list_per_epoch, 10, PRUNE_PER_LAYER)
-        model = delete_filters(
-            model,
-            weight_list_per_epoch,
-            PRUNE_PER_LAYER,
-            DG=DG,
-            input_shape=INPUT_SHAPE,
-        )
-        model, history, weight_list_per_epoch = train(model, 10)
+    optimize(model, weight_list_per_epoch, 10, PRUNE_PER_LAYER)
+    model, stop_flag = delete_filters(
+        model,
+        weight_list_per_epoch,
+        PRUNE_PER_LAYER,
+        DG=DG,
+        input_shape=INPUT_SHAPE,
+    )
+    model, history, weight_list_per_epoch = train(model, 10)
 
     a, b = count_model_params_flops(model, INPUT_SHAPE)
     print(a, b)
@@ -144,18 +77,23 @@ while validation_accuracy - max_val_acc >= -1:
         break
 
     validation_accuracy = max(history["val_accuracy"])
-    log_dict = logging(model, history, log_dict)
+    log_dict = logging(model, history, log_dict, INPUT_SHAPE=INPUT_SHAPE)
     print(
         "VALIDATION ACCURACY AFTER {} ITERATIONS = {}".format(
             count + 1, validation_accuracy
         )
     )
+
+    # Break Loop if pruning indices == 0
+    if stop_flag == 1:
+        break
+
     count += 1
 
 print(model)
 
 model, history, weight_list_per_epoch = train(model, 30, learning_rate=0.001)
-log_dict = logging(model, history, log_dict)
+log_dict = logging(model, history, log_dict, INPUT_SHAPE=INPUT_SHAPE)
 
 log_df = pd.DataFrame(log_dict)
 log_df.to_csv(os.path.join(".", "results", "vgg16_cifar10.csv"))

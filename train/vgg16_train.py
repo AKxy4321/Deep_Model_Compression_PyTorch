@@ -1,4 +1,3 @@
-import multiprocessing
 import os
 import sys
 
@@ -9,64 +8,18 @@ sys.path.append(
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torchvision.datasets as datasets
-import torchvision.transforms as transforms
-from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from models.model_vgg16 import vgg16
-from pruning_utils import dataset_path
+from train.train_config import device, train_config
 
 # Hyperparameters
 batch_size = 128
+train_loader, test_loader = train_config(batch_size=batch_size, dataset=1)
 epochs = 100
 learning_rate = 0.001  # Suitable for Adam
 # weight_decay = 5e-4  # Commented out as per request
 patience = 10  # Early stopping patience
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-num_workers = multiprocessing.cpu_count()
-
-# Data transformations
-transform_val = transforms.Compose(
-    [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
-)
-
-transform_train = transforms.Compose(
-    [
-        transforms.RandomResizedCrop(32, scale=(0.8, 1.2)),  # Random zoom-in
-        transforms.RandomHorizontalFlip(),
-        transforms.RandomRotation(15),  # Stronger rotations
-        transforms.ColorJitter(0.3, 0.3, 0.3, 0.1),  # Vary brightness, contrast, etc.
-        transforms.ToTensor(),  # Must be before Normalize
-        transforms.Normalize((0.1307,), (0.3081,)),
-        transforms.RandomErasing(p=0.2),  # Randomly erase part of image
-    ]
-)
-
-# Load CIFAR-10 dataset
-train_dataset = datasets.CIFAR10(
-    root=dataset_path, train=True, download=True, transform=transform_train
-)
-test_dataset = datasets.CIFAR10(
-    root=dataset_path, train=False, download=True, transform=transform_val
-)
-train_loader = DataLoader(
-    train_dataset,
-    batch_size=batch_size,
-    shuffle=True,
-    num_workers=num_workers,
-    pin_memory=True,
-    persistent_workers=True,
-)
-test_loader = DataLoader(
-    test_dataset,
-    batch_size=batch_size,
-    shuffle=False,
-    num_workers=num_workers,
-    pin_memory=True,
-    persistent_workers=True,
-)
 
 # Initialize model, loss, and optimizer
 model = vgg16(pretrained=False).to(

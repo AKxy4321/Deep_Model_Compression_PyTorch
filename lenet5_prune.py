@@ -20,7 +20,8 @@ PRUNE_PER_LAYER = [5, 10]
 MIN_FILTERS_PER_LAYER = [2, 3]
 
 
-config(BATCH_SIZE=BATCH_SIZE)
+# Add dataset = 0 so that config chooses MNIST dataset instead of CIFAR10
+config(BATCH_SIZE=BATCH_SIZE, dataset=0)
 
 
 def LeNet5():
@@ -35,40 +36,6 @@ def LeNet5():
         nn.Linear(in_features=500, out_features=10),
         nn.Softmax(dim=1),
     )
-
-
-def logging(model, history=None, log_dict=None):
-    global INPUT_SHAPE
-    if log_dict is None:
-        log_dict = {
-            "train_loss": [],
-            "train_acc": [],
-            "val_loss": [],
-            "val_acc": [],
-            "total_params": [],
-            "total_flops": [],
-            "filters_in_conv1": [],
-            "filters_in_conv2": [],
-        }
-        initial_params, initial_flops = count_model_params_flops(model, INPUT_SHAPE)
-        print(f"INITIAL FLOPS: {initial_flops}, INITIAL params : {initial_params}")
-
-    best_acc_index = history["val_accuracy"].index(max(history["val_accuracy"]))
-    log_dict["train_loss"].append(history["loss"][best_acc_index])
-    log_dict["train_acc"].append(history["accuracy"][best_acc_index])
-    log_dict["val_loss"].append(history["val_loss"][best_acc_index])
-    log_dict["val_acc"].append(history["val_accuracy"][best_acc_index])
-    a, b = count_model_params_flops(model, INPUT_SHAPE)
-    log_dict["total_params"].append(a)
-    log_dict["total_flops"].append(b)
-    if log_dict is not None:
-        print(f"Current FLOPS: {b}, Current params : {a}")
-    log_dict["filters_in_conv1"].append(model[0].out_channels)
-    log_dict["filters_in_conv2"].append(model[2].out_channels)
-
-    print("Validation accuracy ", max(history["val_accuracy"]))
-
-    return log_dict
 
 
 model = LeNet5().to(device)
@@ -87,7 +54,7 @@ history["accuracy"].append(validation_accuracy)
 history["loss"].append(validation_loss)
 history["val_accuracy"].append(validation_accuracy)
 history["val_loss"].append(validation_loss)
-log_dict = logging(model, history)
+log_dict = logging(model, history, INPUT_SHAPE=INPUT_SHAPE)
 
 max_val_acc = validation_accuracy
 count = 0
@@ -107,8 +74,8 @@ while validation_accuracy - max_val_acc >= -1:
 
     print(f"MAX VALIDATION ACCURACY = {max_val_acc}")
 
-    optimize(model, weight_list_per_epoch, 1, PRUNE_PER_LAYER)
-    model = delete_filters(
+    optimize(model, weight_list_per_epoch, 10, PRUNE_PER_LAYER)
+    model, stop_flag = delete_filters(
         model=model,
         weight_list_per_epoch=weight_list_per_epoch,
         num_filter_pairs_to_prune_per_layer=PRUNE_PER_LAYER,
@@ -116,7 +83,8 @@ while validation_accuracy - max_val_acc >= -1:
         input_shape=INPUT_SHAPE,
         DG=DG,
     )
-    model, history, weight_list_per_epoch = train(model, 1)
+
+    model, history, weight_list_per_epoch = train(model, 10)
 
     total_params, total_flops = count_model_params_flops(model, INPUT_SHAPE)
     print(total_params, total_flops)
@@ -132,18 +100,23 @@ while validation_accuracy - max_val_acc >= -1:
         break
 
     validation_accuracy = max(history["val_accuracy"])
-    log_dict = logging(model, history, log_dict)
+    log_dict = logging(model, history, log_dict, INPUT_SHAPE=INPUT_SHAPE)
     print(
         "VALIDATION ACCURACY AFTER {} ITERATIONS = {}".format(
             count + 1, validation_accuracy
         )
     )
+
+    # Break Loop if pruning indices == 0
+    if stop_flag == 1:
+        break
+
     count += 1
 
 print(model)
 
 model, history, weight_list_per_epoch = train(model, 30, learning_rate=0.001)
-log_dict = logging(model, history, log_dict)
+log_dict = logging(model, history, log_dict, INPUT_SHAPE=INPUT_SHAPE)
 
 log_df = pd.DataFrame(log_dict)
 log_df.to_csv(os.path.join(".", "results", "lenet5_2.csv"))
