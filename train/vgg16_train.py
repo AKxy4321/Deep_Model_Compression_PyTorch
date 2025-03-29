@@ -69,7 +69,9 @@ test_loader = DataLoader(
 )
 
 # Initialize model, loss, and optimizer
-model = vgg16().to(device)
+model = vgg16(pretrained=False).to(
+    device  # make this True when you want to train with weights
+)
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)  # Changed to Adam
 
