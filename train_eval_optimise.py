@@ -1,4 +1,5 @@
 import multiprocessing
+import os
 
 import torch
 import torch.nn as nn
@@ -146,6 +147,9 @@ def train(model, epochs, learning_rate=0.001):
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
+    best_val_accuracy = 0.0
+    best_model_path = os.path.join(os.getcwd(), "weights", "temp_best_model.pth")
+
     history = {"loss": [], "accuracy": [], "val_loss": [], "val_accuracy": []}
     conv_layer_names = get_all_conv_layers(model)
     named_modules_dict = dict(model.named_modules())
@@ -207,6 +211,16 @@ def train(model, epochs, learning_rate=0.001):
         history["val_loss"].append(val_loss)
         history["val_accuracy"].append(val_accuracy)
         progress_bar.set_postfix(val_loss=val_loss, val_acc=val_accuracy)
+
+        # Save best model
+        if val_accuracy > best_val_accuracy:
+            best_val_accuracy = val_accuracy
+            torch.save(model.state_dict(), best_model_path)
+
+    # Load the best model before returning
+    if os.path.exists(best_model_path):
+        model.load_state_dict(torch.load(best_model_path))
+        print("Best model weights loaded before returning!")
 
     return model, history, weight_list_per_epoch
 
