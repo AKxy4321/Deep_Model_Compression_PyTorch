@@ -221,7 +221,7 @@ class Get_Weights:
             self.weight_list[index].append(each_weight)
 
 
-def get_cosine_sims_filters(model, device=None) -> dict:
+def get_cosine_sims_filters(model) -> dict:
     conv_layers = get_all_conv_layers(model)  # e.g., ['features.0', 'features.3', ...]
     cosine_sums = {}
     named_modules_dict = dict(model.named_modules())
