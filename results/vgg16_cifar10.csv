@@ -1,0 +1,4 @@
+,train_loss,train_acc,val_loss,val_acc,total_params,total_flops,filters_in_features.0,filters_in_features.3,filters_in_features.7,filters_in_features.10,filters_in_features.14,filters_in_features.17,filters_in_features.20,filters_in_features.24,filters_in_features.27,filters_in_features.30,filters_in_features.34,filters_in_features.37,filters_in_features.40
+0,0.0017712171856313944,94.0,0.0017712171856313944,94.0,33646666,85091549184,64,64,128,128,256,256,256,512,512,512,512,512,512
+1,0.0019824169728159904,92.338,0.004563187049329281,86.41,33497078,83278394880,62,62,126,126,254,254,254,510,510,510,510,510,510
+2,0.0007675526425335557,97.138,0.006069119220972061,86.82,33497078,83278394880,62,62,126,126,254,254,254,510,510,510,510,510,510
