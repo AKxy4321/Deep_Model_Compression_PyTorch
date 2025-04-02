@@ -10,3 +10,5 @@ __pycache__/
 
 results/*.pt
 weights/temp_best_model.pth
+
+weights/
