@@ -18,6 +18,7 @@ BATCH_SIZE = 128
 INPUT_SHAPE = (BATCH_SIZE, 3, 32, 32)
 NO_PRUNING_LIMIT = 8
 PRUNE_PER_LAYER = [2] * 13
+MIN_FILTERS_PER_LAYER = [2] * 13
 
 
 # Add dataset = 1 so that config chooses CIFAR10 dataset instead of MNIST
@@ -57,9 +58,10 @@ while validation_accuracy - max_val_acc >= -5:
 
     optimize(model, weight_list_per_epoch, 10, PRUNE_PER_LAYER)
     model, stop_flag = delete_filters(
-        model,
-        weight_list_per_epoch,
-        PRUNE_PER_LAYER,
+        model=model,
+        weight_list_per_epoch=weight_list_per_epoch,
+        num_filter_pairs_to_prune_per_layer=PRUNE_PER_LAYER,
+        min_filters_per_layer=MIN_FILTERS_PER_LAYER,
         DG=DG,
         input_shape=INPUT_SHAPE,
     )
