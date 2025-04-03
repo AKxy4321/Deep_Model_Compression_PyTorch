@@ -17,8 +17,8 @@ from train_eval_optimise import config, evaluate, optimize, train
 BATCH_SIZE = 128
 INPUT_SHAPE = (BATCH_SIZE, 3, 32, 32)
 NO_PRUNING_LIMIT = 8
-PRUNE_PER_LAYER = [2] * 13
-MIN_FILTERS_PER_LAYER = [2] * 13
+PRUNE_PER_LAYER = [2] * 49
+MIN_FILTERS_PER_LAYER = [2] * 49
 
 
 model = resnet50().to(device)
