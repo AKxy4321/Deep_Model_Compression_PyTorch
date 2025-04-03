@@ -21,8 +21,8 @@ test_loader = 0
 INITIAL_LR_ADAM = 1e-3
 FINAL_LR_ADAM = 1e-5
 
-INITIAL_LR_SGD = 1e-1
-FINAL_LR_SGD = 1e-3
+INITIAL_LR_SGD = 1e-2
+FINAL_LR_SGD = 1e-4
 
 optimizer_choice = ""
 
@@ -35,7 +35,7 @@ def get_lambda_lr_scheduler(initial_lr, final_lr, epochs):
 
 def config(BATCH_SIZE, dataset=1):
     global train_loader, test_loader, optimizer_choice
-    num_workers = multiprocessing.cpu_count()
+    num_workers = min(9, multiprocessing.cpu_count())
     if dataset == 1:
         transform_train = transforms.Compose(
             [
