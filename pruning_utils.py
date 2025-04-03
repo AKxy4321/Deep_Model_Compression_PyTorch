@@ -320,7 +320,7 @@ def get_regularizer_value(
     return regularizer_value
 
 
-def custom_loss(lmbda: float, regularizer_value: float):
+def custom_loss(lmbda: float = 0.1, regularizer_value: float = 0):
     def loss(y_pred, y_true):
         y_true = y_true.long()
         return F.cross_entropy(y_pred, y_true) + lmbda * regularizer_value

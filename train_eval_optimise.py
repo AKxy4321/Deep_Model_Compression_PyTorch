@@ -108,19 +108,18 @@ def optimize(
         "val_loss": [],
         "val_accuracy": [],
     }
-
     print("OPTIMISING MODEL")
+
+    regularizer_value = get_regularizer_value(
+        model, weight_list_per_epoch, num_filter_pairs_to_prune_per_layer
+    )
+
+    criterion = custom_loss(lmbda=0.1, regularizer_value=regularizer_value)
+    val_criterion = nn.CrossEntropyLoss()
+
+    print(f"INITIAL REGULARIZER VALUE = {regularizer_value}")
+
     for epoch in range(epochs):
-        # Compute regularizer value for this epoch
-        regularizer_value = get_regularizer_value(
-            model, weight_list_per_epoch, num_filter_pairs_to_prune_per_layer
-        )
-        print(f"Epoch {epoch + 1}/{epochs} - Regularizer Value: {regularizer_value}")
-
-        # Update loss function with new regularizer value
-        criterion = custom_loss(lmbda=0.1, regularizer_value=regularizer_value)
-        val_criterion = nn.CrossEntropyLoss()
-
         model.train()
         train_loss = 0
         correct = 0
