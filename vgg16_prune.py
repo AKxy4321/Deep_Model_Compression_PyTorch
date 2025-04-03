@@ -41,6 +41,8 @@ history["val_loss"].append(validation_loss)
 log_dict = logging(model, history, INPUT_SHAPE=INPUT_SHAPE)
 
 max_val_acc = validation_accuracy
+
+print(f"MAX VALIDATION ACCURACY = {max_val_acc}")
 count = 0
 
 print("STARTED PRUNING PROCESS")
@@ -51,12 +53,14 @@ initial_parameters = sum(p.numel() for p in model.parameters())
 while validation_accuracy - max_val_acc >= -5:
     current_parameters = sum(p.numel() for p in model.parameters())
     print("ITERATION {} ".format(count + 1))
-    # if max_val_acc < validation_accuracy:
-    #     max_val_acc = validation_accuracy
+    if max_val_acc > validation_accuracy:
+        max_val_acc = validation_accuracy
 
-    print(f"MAX VALIDATION ACCURACY = {max_val_acc}")
+        print(f"MAX VALIDATION ACCURACY UPDATE TO = {max_val_acc}")
 
     optimize(model, weight_list_per_epoch, 10, PRUNE_PER_LAYER)
+    print("After optmization step :")
+    evaluate(model)
     model, stop_flag = delete_filters(
         model=model,
         weight_list_per_epoch=weight_list_per_epoch,
@@ -65,7 +69,11 @@ while validation_accuracy - max_val_acc >= -5:
         DG=DG,
         input_shape=INPUT_SHAPE,
     )
+    print("After filter deletion step :")
+    evaluate(model)
     model, history, weight_list_per_epoch = train(model, 10)
+    print("After retraining step immediately after filter deletion :")
+    evaluate(model)
 
     a, b = count_model_params_flops(model, INPUT_SHAPE)
     print(a, b)
