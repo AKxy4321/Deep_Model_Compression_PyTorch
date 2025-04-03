@@ -303,6 +303,10 @@ def get_regularizer_value(
         num_filter_pairs_to_prune_per_layer,
         min_filters_per_layer,
     )
+
+    # print("HI")
+    # print(len(filter_pairs_dict))
+    # exit()
     cosine_sims_dict = get_cosine_sims_filters(model)
 
     regularizer_value = 0
@@ -313,7 +317,10 @@ def get_regularizer_value(
                 - np.sum(cosine_sims_dict[layer_name][episode[0]])
             )
 
+    regularizer_value = 0
+
     # regularizer_value = np.exp(regularizer_value)
+    # np.log1p(regularizer_value) * (regularizer_value / max(1, total_filters))
     # print(regularizer_value)
     return regularizer_value
 
