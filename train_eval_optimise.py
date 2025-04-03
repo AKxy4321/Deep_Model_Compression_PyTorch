@@ -134,7 +134,7 @@ def optimize(model, weight_list_per_epoch, epochs, num_filter_pairs_to_prune_per
         val_accuracy = 100.0 * correct / len(test_loader.dataset)
         history["val_loss"].append(val_loss)
         history["val_accuracy"].append(val_accuracy)
-        progress_bar.set_postfix(val_loss=val_loss, val_acc=val_accuracy)
+        print(f"val loss:{val_loss}, val acc:{val_accuracy}")
 
     print("FINAL REGULARIZER VALUE ", regularizer_value)
 
@@ -210,7 +210,7 @@ def train(model, epochs, learning_rate=0.001):
         val_accuracy = 100.0 * correct / len(test_loader.dataset)
         history["val_loss"].append(val_loss)
         history["val_accuracy"].append(val_accuracy)
-        progress_bar.set_postfix(val_loss=val_loss, val_acc=val_accuracy)
+        print(f"val loss:{val_loss}, val acc:{val_accuracy}")
 
         # Save best model
         if val_accuracy > best_val_accuracy:
@@ -220,7 +220,7 @@ def train(model, epochs, learning_rate=0.001):
     # Load the best model before returning
     if os.path.exists(best_model_path):
         model.load_state_dict(torch.load(best_model_path, weights_only=True))
-        print("Best model weights loaded before returning!")
+        print(f"Best model weights loaded before returning! best val_acc:{best_val_accuracy}")
 
     return model, history, weight_list_per_epoch
 
