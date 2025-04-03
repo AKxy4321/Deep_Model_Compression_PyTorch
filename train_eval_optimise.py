@@ -15,7 +15,6 @@ from pruning_utils import (
     get_regularizer_value,
 )
 
-num_workers = 0
 BATCH_SIZE = 0
 train_loader = 0
 test_loader = 0
@@ -25,31 +24,59 @@ def config(BATCH_SIZE, dataset=1, model=0):
     global train_loader, test_loader
     num_workers = multiprocessing.cpu_count()
     if dataset == 1:
-        transform = transforms.Compose(
+        transform_train = transforms.Compose(
+            [
+                transforms.RandomCrop(32, padding=4),
+                transforms.RandomHorizontalFlip(),
+                transforms.AutoAugment(transforms.AutoAugmentPolicy.CIFAR10),
+                transforms.ToTensor(),
+                transforms.Normalize((0.4914, 0.4822, 0.4465), (0.247, 0.2434, 0.2615)),
+            ]
+        )
+        transform_val = transforms.Compose(
             [
                 transforms.ToTensor(),
                 transforms.Normalize((0.4914, 0.4822, 0.4465), (0.247, 0.2434, 0.2615)),
             ]
         )
         train_dataset = datasets.CIFAR10(
-            dataset_path, train=True, download=True, transform=transform
+            dataset_path, train=True, download=True, transform=transform_train
         )
         test_dataset = datasets.CIFAR10(
-            dataset_path, train=False, download=True, transform=transform
+            dataset_path, train=False, download=True, transform=transform_val
         )
+
+        train_optimizer = optim.SGD(
+            model.parameters(), lr=0.01, momentum=0.9, nesterov=True, weight_decay=5e-4
+        )
+        optimize_optimizer = optim.SGD(
+            model.parameters(), lr=0.01, momentum=0.9, nesterov=True, weight_decay=5e-4
+        )
+
     elif dataset == 0:
-        transform = transforms.Compose(
+        transform_train = transforms.Compose(
+            [
+                transforms.RandomCrop(28, padding=4),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                transforms.Normalize((0.1307), (0.3015)),
+            ]
+        )
+        transform_val = transforms.Compose(
             [
                 transforms.ToTensor(),
                 transforms.Normalize((0.1307), (0.3015)),
             ]
         )
         train_dataset = datasets.MNIST(
-            dataset_path, train=True, download=True, transform=transform
+            dataset_path, train=True, download=True, transform=transform_train
         )
         test_dataset = datasets.MNIST(
-            dataset_path, train=False, download=True, transform=transform
+            dataset_path, train=False, download=True, transform=transform_val
         )
+
+        train_optimizer = optim.Adam(model.parameters(), lr=0.001)
+        optimize_optimizer = optim.Adam(model.parameters(), lr=0.001)
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
@@ -66,9 +93,6 @@ def config(BATCH_SIZE, dataset=1, model=0):
         num_workers=num_workers,
         pin_memory=True,
     )
-
-    train_optimizer = optim.Adam(model.parameters(), lr=0.001)
-    optimize_optimizer = optim.Adam(model.parameters(), lr=0.001)
 
     return train_optimizer, optimize_optimizer
 
@@ -95,6 +119,7 @@ def optimize(
 
         # Update loss function with new regularizer value
         criterion = custom_loss(lmbda=0.1, regularizer_value=regularizer_value)
+        val_criterion = nn.CrossEntropyLoss()
 
         model.train()
         train_loss = 0
@@ -109,7 +134,7 @@ def optimize(
             data, target = data.to(device), target.to(device)
             optimizer.zero_grad()
             output = model(data)
-            loss = criterion(target, output)
+            loss = criterion(output, target)
             loss.backward()
             optimizer.step()
 
@@ -133,7 +158,7 @@ def optimize(
             for data, target in test_loader:
                 data, target = data.to(device), target.to(device)
                 output = model(data)
-                val_loss += criterion(target, output).item()
+                val_loss += val_criterion(output, target).item()
                 correct += (output.argmax(1) == target).sum().item()
 
         val_loss /= len(test_loader.dataset)
@@ -147,7 +172,7 @@ def optimize(
     return model, history
 
 
-def train(model, epochs, learning_rate=0.001, optimizer=0):
+def train(model, epochs, optimizer=0):
     global test_loader, train_loader
 
     criterion = nn.CrossEntropyLoss()

@@ -304,9 +304,6 @@ def get_regularizer_value(
         min_filters_per_layer,
     )
 
-    # print("HI")
-    # print(len(filter_pairs_dict))
-    # exit()
     cosine_sims_dict = get_cosine_sims_filters(model)
 
     regularizer_value = 0
@@ -317,16 +314,15 @@ def get_regularizer_value(
                 - np.sum(cosine_sims_dict[layer_name][episode[0]])
             )
 
-    regularizer_value = 0
-
-    # regularizer_value = np.exp(regularizer_value)
+    regularizer_value = np.exp(regularizer_value)
     # np.log1p(regularizer_value) * (regularizer_value / max(1, total_filters))
     # print(regularizer_value)
     return regularizer_value
 
 
 def custom_loss(lmbda: float, regularizer_value: float):
-    def loss(y_true, y_pred):
+    def loss(y_pred, y_true):
+        y_true = y_true.long()
         return F.cross_entropy(y_pred, y_true) + lmbda * regularizer_value
 
     return loss
