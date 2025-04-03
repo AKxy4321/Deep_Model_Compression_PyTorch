@@ -4,7 +4,7 @@ import pandas as pd
 import torch
 import torch_pruning as tp
 
-from models.model_resnet50 import resnet50
+from models.model_densenet121 import densenet121
 from pruning_utils import (
     count_model_params_flops,
     delete_filters,
@@ -21,7 +21,7 @@ MIN_FILTERS_PER_LAYER = [2] * 120
 # Add dataset = 1 so that config chooses CIFAR10 dataset instead of MNIST
 INPUT_SHAPE = config(BATCH_SIZE=BATCH_SIZE, dataset=1)
 
-model = resnet50().to(device)
+model = densenet121().to(device)
 
 DG = tp.DependencyGraph().build_dependency(
     model, example_inputs=torch.randn(INPUT_SHAPE).to(device)
