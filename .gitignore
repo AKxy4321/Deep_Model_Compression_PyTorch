@@ -8,4 +8,6 @@ __pycache__/
 
 .*/
 
-results/*.pt
+results/*.log
+
+weights/temp_best_model.pth
