@@ -280,14 +280,7 @@ def train(model, epochs: int):
 
         scheduler.step()  # Update LR
 
-    for layer_name in conv_layer_names:
-        if layer_name in named_modules_dict:
-            layer = named_modules_dict[layer_name]
-
-            if hasattr(layer, "weight") and layer.weight is not None:
-                weight_tensor = layer.weight.data.clone().to(device)
-                weight_list_per_epoch[layer_name].append(weight_tensor)
-
+        # Validation
         model.eval()
         val_loss = 0
         correct = 0
@@ -312,6 +305,14 @@ def train(model, epochs: int):
 
     if os.path.exists(best_model_path):
         model.load_state_dict(torch.load(best_model_path, weights_only=True))
+
+    for layer_name in conv_layer_names:
+        if layer_name in named_modules_dict:
+            layer = named_modules_dict[layer_name]
+
+            if hasattr(layer, "weight") and layer.weight is not None:
+                weight_tensor = layer.weight.data.clone().to(device)
+                weight_list_per_epoch[layer_name].append(weight_tensor)
 
     return model, history, weight_list_per_epoch
 
