@@ -21,7 +21,7 @@ train_loader = 0
 test_loader = 0
 
 
-def config(BATCH_SIZE, dataset=1):
+def config(BATCH_SIZE, dataset=1, model=0):
     global train_loader, test_loader
     num_workers = multiprocessing.cpu_count()
     if dataset == 1:
@@ -67,11 +67,17 @@ def config(BATCH_SIZE, dataset=1):
         pin_memory=True,
     )
 
+    train_optimizer = optim.Adam(model.parameters(), lr=0.001)
+    optimize_optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-def optimize(model, weight_list_per_epoch, epochs, num_filter_pairs_to_prune_per_layer):
+    return train_optimizer, optimize_optimizer
+
+
+def optimize(
+    model, weight_list_per_epoch, epochs, num_filter_pairs_to_prune_per_layer, optimizer
+):
     global test_loader, train_loader
 
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
     history = {
         "loss": [],
         "accuracy": [],
@@ -141,11 +147,10 @@ def optimize(model, weight_list_per_epoch, epochs, num_filter_pairs_to_prune_per
     return model, history
 
 
-def train(model, epochs, learning_rate=0.001):
+def train(model, epochs, learning_rate=0.001, optimizer=0):
     global test_loader, train_loader
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
     best_val_accuracy = 0.0
     best_model_path = os.path.join(os.getcwd(), "weights", "temp_best_model.pth")
@@ -220,7 +225,9 @@ def train(model, epochs, learning_rate=0.001):
     # Load the best model before returning
     if os.path.exists(best_model_path):
         model.load_state_dict(torch.load(best_model_path, weights_only=True))
-        print(f"Best model weights loaded before returning! best val_acc:{best_val_accuracy}")
+        print(
+            f"Best model weights loaded before returning! best val_acc:{best_val_accuracy}"
+        )
 
     return model, history, weight_list_per_epoch
 

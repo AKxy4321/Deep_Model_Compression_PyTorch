@@ -17,14 +17,17 @@ from train_eval_optimise import config, evaluate, optimize, train
 BATCH_SIZE = 128
 INPUT_SHAPE = (BATCH_SIZE, 3, 32, 32)
 NO_PRUNING_LIMIT = 8
-PRUNE_PER_LAYER = [2] * 120
-MIN_FILTERS_PER_LAYER = [2] * 120
+PRUNE_PER_LAYER = [2] * 13
+MIN_FILTERS_PER_LAYER = [2] * 13
 
+
+model = densenet121().to(device)
 # Add dataset = 1 so that config chooses CIFAR10 dataset instead of MNIST
-config(BATCH_SIZE=BATCH_SIZE, dataset=1)
+train_optimizer, optimize_optimizer = config(
+    BATCH_SIZE=BATCH_SIZE, dataset=1, model=model
+)
 
 
-model = densenet121(pretrained=False).to(device)
 DG = tp.DependencyGraph().build_dependency(
     model, example_inputs=torch.randn(INPUT_SHAPE).to(device)
 )
@@ -40,6 +43,8 @@ history["val_loss"].append(validation_loss)
 log_dict = logging(model, history, INPUT_SHAPE=INPUT_SHAPE)
 
 max_val_acc = validation_accuracy
+
+print(f"MAX VALIDATION ACCURACY = {max_val_acc}")
 count = 0
 
 print("STARTED PRUNING PROCESS")
@@ -47,14 +52,19 @@ print("STARTED PRUNING PROCESS")
 iterations_without_pruning = 0
 initial_parameters = sum(p.numel() for p in model.parameters())
 
-while validation_accuracy - max_val_acc >= -1:
+while validation_accuracy - max_val_acc >= -5:
     current_parameters = sum(p.numel() for p in model.parameters())
     print("ITERATION {} ".format(count + 1))
-    if max_val_acc < validation_accuracy:
+    if max_val_acc > validation_accuracy:
         max_val_acc = validation_accuracy
 
-    print(f"MAX VALIDATION ACCURACY = {max_val_acc}")
-    optimize(model, weight_list_per_epoch, 10, PRUNE_PER_LAYER)
+        print(f"MAX VALIDATION ACCURACY UPDATE TO = {max_val_acc}")
+
+    model, history = optimize(
+        model, weight_list_per_epoch, 10, PRUNE_PER_LAYER, optimizer=optimize_optimizer
+    )
+    print("After optmization step :")
+    evaluate(model)
     model, stop_flag = delete_filters(
         model=model,
         weight_list_per_epoch=weight_list_per_epoch,
@@ -63,7 +73,11 @@ while validation_accuracy - max_val_acc >= -1:
         DG=DG,
         input_shape=INPUT_SHAPE,
     )
-    model, history, weight_list_per_epoch = train(model, 10)
+    print("After filter deletion step :")
+    evaluate(model)
+    model, history, weight_list_per_epoch = train(model, 10, optimizer=train_optimizer)
+    print("After retraining step immediately after filter deletion :")
+    evaluate(model)
 
     a, b = count_model_params_flops(model, INPUT_SHAPE)
     print(a, b)
@@ -95,7 +109,9 @@ while validation_accuracy - max_val_acc >= -1:
 
 print(model)
 
-model, history, weight_list_per_epoch = train(model, 30, learning_rate=0.001)
+model, history, weight_list_per_epoch = train(
+    model, 30, learning_rate=0.001, optimizer=train_optimizer
+)
 log_dict = logging(model, history, log_dict, INPUT_SHAPE=INPUT_SHAPE)
 
 torch.save(model, os.path.join(os.getcwd(), "results", "densenet121_pruned.pt"))

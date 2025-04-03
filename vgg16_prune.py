@@ -21,11 +21,13 @@ PRUNE_PER_LAYER = [2] * 13
 MIN_FILTERS_PER_LAYER = [2] * 13
 
 
-# Add dataset = 1 so that config chooses CIFAR10 dataset instead of MNIST
-config(BATCH_SIZE=BATCH_SIZE, dataset=1)
-
-
 model = vgg16().to(device)
+# Add dataset = 1 so that config chooses CIFAR10 dataset instead of MNIST
+train_optimizer, optimize_optimizer = config(
+    BATCH_SIZE=BATCH_SIZE, dataset=1, model=model
+)
+
+
 DG = tp.DependencyGraph().build_dependency(
     model, example_inputs=torch.randn(INPUT_SHAPE).to(device)
 )
@@ -58,7 +60,9 @@ while validation_accuracy - max_val_acc >= -5:
 
         print(f"MAX VALIDATION ACCURACY UPDATE TO = {max_val_acc}")
 
-    optimize(model, weight_list_per_epoch, 10, PRUNE_PER_LAYER)
+    model, history = optimize(
+        model, weight_list_per_epoch, 10, PRUNE_PER_LAYER, optimizer=optimize_optimizer
+    )
     print("After optmization step :")
     evaluate(model)
     model, stop_flag = delete_filters(
@@ -71,7 +75,7 @@ while validation_accuracy - max_val_acc >= -5:
     )
     print("After filter deletion step :")
     evaluate(model)
-    model, history, weight_list_per_epoch = train(model, 10)
+    model, history, weight_list_per_epoch = train(model, 10, optimizer=train_optimizer)
     print("After retraining step immediately after filter deletion :")
     evaluate(model)
 
@@ -105,7 +109,9 @@ while validation_accuracy - max_val_acc >= -5:
 
 print(model)
 
-model, history, weight_list_per_epoch = train(model, 30, learning_rate=0.001)
+model, history, weight_list_per_epoch = train(
+    model, 30, learning_rate=0.001, optimizer=train_optimizer
+)
 log_dict = logging(model, history, log_dict, INPUT_SHAPE=INPUT_SHAPE)
 
 torch.save(model, os.path.join(os.getcwd(), "results", "vgg16_pruned.pt"))

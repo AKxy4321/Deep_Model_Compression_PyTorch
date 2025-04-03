@@ -326,12 +326,8 @@ def get_regularizer_value(
 
 
 def custom_loss(lmbda: float, regularizer_value: float):
-    reg_term = torch.tensor(
-        regularizer_value, device=device
-    ).detach()  # Convert once, detach from gradients
-
     def loss(y_true, y_pred):
-        return F.cross_entropy(y_pred, y_true) + lmbda * reg_term
+        return F.cross_entropy(y_pred, y_true) + lmbda * regularizer_value
 
     return loss
 
