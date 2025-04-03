@@ -19,7 +19,7 @@ train_loader = 0
 test_loader = 0
 
 INITIAL_LR_ADAM = 1e-3
-FINAL_LR_ADAM = 1e-5
+FINAL_LR_ADAM = 1e-4
 
 INITIAL_LR_SGD = 1e-2
 FINAL_LR_SGD = 1e-4
@@ -64,25 +64,17 @@ def config(BATCH_SIZE, dataset=1):
         INPUT_SHAPE = (BATCH_SIZE, 3, 32, 32)
 
     elif dataset == 0:
-        transform_train = transforms.Compose(
-            [
-                transforms.RandomCrop(28, padding=4),
-                transforms.RandomHorizontalFlip(),
-                transforms.ToTensor(),
-                transforms.Normalize((0.1307), (0.3015)),
-            ]
-        )
-        transform_val = transforms.Compose(
+        transform = transforms.Compose(
             [
                 transforms.ToTensor(),
                 transforms.Normalize((0.1307), (0.3015)),
             ]
         )
         train_dataset = datasets.MNIST(
-            dataset_path, train=True, download=True, transform=transform_train
+            dataset_path, train=True, download=True, transform=transform
         )
         test_dataset = datasets.MNIST(
-            dataset_path, train=False, download=True, transform=transform_val
+            dataset_path, train=False, download=True, transform=transform
         )
 
         optimizer_choice = "Adam"

@@ -13,8 +13,8 @@ from pruning_utils import (
 )
 from train_eval_optimise import config, evaluate, optimize, train
 
-BATCH_SIZE = 1024
-PRUNE_PER_LAYER = [2, 4]
+BATCH_SIZE = 128
+PRUNE_PER_LAYER = [2, 5]
 MIN_FILTERS_PER_LAYER = [2, 3]
 
 
@@ -59,6 +59,9 @@ log_dict = logging(model, history, INPUT_SHAPE=INPUT_SHAPE)
 max_val_acc = validation_accuracy
 
 print(f"MAX VALIDATION ACCURACY = {max_val_acc}")
+
+print(f"PRUNE PER LAYER {PRUNE_PER_LAYER}")
+
 count = 0
 
 print("STARTED PRUNING PROCESS")
