@@ -15,20 +15,33 @@ from pruning_utils import (
     get_regularizer_value,
 )
 
-BATCH_SIZE = 0
 train_loader = 0
 test_loader = 0
 
+INITIAL_LR_ADAM = 1e-3
+FINAL_LR_ADAM = 1e-5
 
-def config(BATCH_SIZE, dataset=1, model=0):
-    global train_loader, test_loader
+INITIAL_LR_SGD = 1e-1
+FINAL_LR_SGD = 1e-3
+
+optimizer_choice = ""
+
+
+def get_lambda_lr_scheduler(initial_lr, final_lr, epochs):
+    return lambda epoch: final_lr / initial_lr + (1 - final_lr / initial_lr) * (
+        1 - epoch / epochs
+    )
+
+
+def config(BATCH_SIZE, dataset=1):
+    global train_loader, test_loader, optimizer_choice
     num_workers = multiprocessing.cpu_count()
     if dataset == 1:
         transform_train = transforms.Compose(
             [
-                transforms.RandomCrop(32, padding=4),
+                transforms.RandomRotation(15),
                 transforms.RandomHorizontalFlip(),
-                transforms.AutoAugment(transforms.AutoAugmentPolicy.CIFAR10),
+                transforms.RandomAffine(0, translate=(0.1, 0.1)),
                 transforms.ToTensor(),
                 transforms.Normalize((0.4914, 0.4822, 0.4465), (0.247, 0.2434, 0.2615)),
             ]
@@ -46,12 +59,9 @@ def config(BATCH_SIZE, dataset=1, model=0):
             dataset_path, train=False, download=True, transform=transform_val
         )
 
-        train_optimizer = optim.SGD(
-            model.parameters(), lr=0.01, momentum=0.9, nesterov=True, weight_decay=5e-4
-        )
-        optimize_optimizer = optim.SGD(
-            model.parameters(), lr=0.01, momentum=0.9, nesterov=True, weight_decay=5e-4
-        )
+        optimizer_choice = "SGD"
+
+        INPUT_SHAPE = (BATCH_SIZE, 3, 32, 32)
 
     elif dataset == 0:
         transform_train = transforms.Compose(
@@ -75,8 +85,9 @@ def config(BATCH_SIZE, dataset=1, model=0):
             dataset_path, train=False, download=True, transform=transform_val
         )
 
-        train_optimizer = optim.Adam(model.parameters(), lr=0.001)
-        optimize_optimizer = optim.Adam(model.parameters(), lr=0.001)
+        optimizer_choice = "Adam"
+
+        INPUT_SHAPE = (BATCH_SIZE, 1, 28, 28)
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
@@ -94,14 +105,20 @@ def config(BATCH_SIZE, dataset=1, model=0):
         pin_memory=True,
     )
 
-    return train_optimizer, optimize_optimizer
+    if optimizer_choice == "Adam":
+        print("OPTIMIZER = ADAM")
+    elif optimizer_choice == "SGD":
+        print("OPTIMIZER = SGD")
+
+    return INPUT_SHAPE
 
 
 def optimize(
-    model, weight_list_per_epoch, epochs, num_filter_pairs_to_prune_per_layer, optimizer
+    model,
+    weight_list_per_epoch: dict,
+    epochs: int,
+    num_filter_pairs_to_prune_per_layer: list,
 ):
-    global test_loader, train_loader
-
     history = {
         "loss": [],
         "accuracy": [],
@@ -110,6 +127,28 @@ def optimize(
     }
     print("OPTIMISING MODEL")
 
+    if optimizer_choice == "Adam":
+        optimizer = optim.Adam(model.parameters(), lr=INITIAL_LR_ADAM)
+
+        scheduler = optim.lr_scheduler.LambdaLR(
+            optimizer,
+            lr_lambda=get_lambda_lr_scheduler(INITIAL_LR_ADAM, FINAL_LR_ADAM, epochs),
+        )
+
+    elif optimizer_choice == "SGD":
+        optimizer = optim.SGD(
+            model.parameters(),
+            lr=INITIAL_LR_SGD,
+            momentum=0.9,
+            nesterov=True,
+            weight_decay=5e-4,
+        )
+
+        scheduler = optim.lr_scheduler.LambdaLR(
+            optimizer,
+            lr_lambda=get_lambda_lr_scheduler(INITIAL_LR_SGD, FINAL_LR_SGD, epochs),
+        )
+
     regularizer_value = get_regularizer_value(
         model, weight_list_per_epoch, num_filter_pairs_to_prune_per_layer
     )
@@ -117,7 +156,7 @@ def optimize(
     criterion = custom_loss(lmbda=0.1, regularizer_value=regularizer_value)
     val_criterion = nn.CrossEntropyLoss()
 
-    print(f"INITIAL REGULARIZER VALUE = {regularizer_value}")
+    print(f"REGULARIZER VALUE = {regularizer_value}")
 
     for epoch in range(epochs):
         model.train()
@@ -145,34 +184,56 @@ def optimize(
                 acc=100.0 * correct / total_samples,
             )
 
-        train_loss /= len(train_loader.dataset)
-        accuracy = 100.0 * correct / len(train_loader.dataset)
+        train_loss /= total_samples
+        accuracy = 100.0 * correct / total_samples
         history["loss"].append(train_loss)
         history["accuracy"].append(accuracy)
+
+        scheduler.step()  # Update LR
 
         model.eval()
         val_loss = 0
         correct = 0
+        total_samples = 0
         with torch.no_grad():
             for data, target in test_loader:
                 data, target = data.to(device), target.to(device)
                 output = model(data)
                 val_loss += val_criterion(output, target).item()
                 correct += (output.argmax(1) == target).sum().item()
+                total_samples += target.size(0)
 
-        val_loss /= len(test_loader.dataset)
-        val_accuracy = 100.0 * correct / len(test_loader.dataset)
+        val_loss /= total_samples
+        val_accuracy = 100.0 * correct / total_samples
         history["val_loss"].append(val_loss)
         history["val_accuracy"].append(val_accuracy)
-        print(f"val loss:{val_loss}, val acc:{val_accuracy}")
-
-    print("FINAL REGULARIZER VALUE ", regularizer_value)
+        print(f"Val Acc:{val_accuracy:.2f}")
 
     return model, history
 
 
-def train(model, epochs, optimizer=0):
-    global test_loader, train_loader
+def train(model, epochs: int):
+    if optimizer_choice == "Adam":
+        optimizer = optim.Adam(model.parameters(), lr=INITIAL_LR_ADAM)
+
+        scheduler = optim.lr_scheduler.LambdaLR(
+            optimizer,
+            lr_lambda=get_lambda_lr_scheduler(INITIAL_LR_ADAM, FINAL_LR_ADAM, epochs),
+        )
+
+    elif optimizer_choice == "SGD":
+        optimizer = optim.SGD(
+            model.parameters(),
+            lr=INITIAL_LR_SGD,
+            momentum=0.9,
+            nesterov=True,
+            weight_decay=5e-4,
+        )
+
+        scheduler = optim.lr_scheduler.LambdaLR(
+            optimizer,
+            lr_lambda=get_lambda_lr_scheduler(INITIAL_LR_SGD, FINAL_LR_SGD, epochs),
+        )
 
     criterion = nn.CrossEntropyLoss()
 
@@ -212,10 +273,12 @@ def train(model, epochs, optimizer=0):
                 acc=100.0 * correct / total_samples,
             )
 
-        train_loss /= len(train_loader.dataset)
-        accuracy = 100.0 * correct / len(train_loader.dataset)
+        train_loss /= total_samples
+        accuracy = 100.0 * correct / total_samples
         history["loss"].append(train_loss)
         history["accuracy"].append(accuracy)
+
+        scheduler.step()  # Update LR
 
     for layer_name in conv_layer_names:
         if layer_name in named_modules_dict:
@@ -228,30 +291,27 @@ def train(model, epochs, optimizer=0):
         model.eval()
         val_loss = 0
         correct = 0
+        total_samples = 0
         with torch.no_grad():
             for data, target in test_loader:
                 data, target = data.to(device), target.to(device)
                 output = model(data)
                 val_loss += criterion(output, target).item()
                 correct += (output.argmax(1) == target).sum().item()
+                total_samples += target.size(0)
 
-        val_loss /= len(test_loader.dataset)
-        val_accuracy = 100.0 * correct / len(test_loader.dataset)
+        val_loss /= total_samples
+        val_accuracy = 100.0 * correct / total_samples
         history["val_loss"].append(val_loss)
         history["val_accuracy"].append(val_accuracy)
-        print(f"val loss:{val_loss}, val acc:{val_accuracy}")
+        print(f"Val Acc: {val_accuracy:.2f}")
 
-        # Save best model
         if val_accuracy > best_val_accuracy:
             best_val_accuracy = val_accuracy
             torch.save(model.state_dict(), best_model_path)
 
-    # Load the best model before returning
     if os.path.exists(best_model_path):
         model.load_state_dict(torch.load(best_model_path, weights_only=True))
-        print(
-            f"Best model weights loaded before returning! best val_acc:{best_val_accuracy}"
-        )
 
     return model, history, weight_list_per_epoch
 
@@ -260,7 +320,7 @@ def evaluate(model):
     global test_loader
     model.eval()
     correct = 0
-    total = 0
+    total_samples = 0
     running_loss = 0.0
     print("EVALUATING PRE-TRAINED MODEL")
     with torch.no_grad():
@@ -270,12 +330,11 @@ def evaluate(model):
             loss = nn.CrossEntropyLoss()(outputs, labels)
             running_loss += loss.item()
             correct += (outputs.argmax(1) == labels).sum().item()
-            total += labels.size(0)
+            total_samples += labels.size(0)
 
-    val_loss = running_loss / total
-    val_accuracy = 100 * correct / total
+    val_loss = running_loss / total_samples
+    val_accuracy = 100 * correct / total_samples
     print(f"Validation Accuracy: {val_accuracy:.2f}%")
-    print(f"Validation Loss: {val_loss:.4f}")
 
     conv_layer_names = get_all_conv_layers(model)
     named_modules_dict = dict(model.named_modules())

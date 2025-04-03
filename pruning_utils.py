@@ -88,8 +88,10 @@ def get_cosine_sims_filters_per_epoch(weight_list_per_epoch: dict) -> dict:
             )
         )
 
+    total_filters = sum(num_filters_model)
     print(f"NUM FILTERS BEFORE PRUNING: {num_filters_model}")
-    return sorted_filter_pair_sum
+    print(f"TOTAL NUMBER OF FILTERS {total_filters}")
+    return sorted_filter_pair_sum, total_filters
 
 
 def get_filter_pruning_indices(
@@ -147,7 +149,9 @@ def find_pruning_indices(
         tuple: Two dictionaries: one mapping layer names to pruning indices, and the other mapping
                layer names to the list of filter pairs (each filter pair is a list of two indices).
     """
-    sorted_filter_pair_sums = get_cosine_sims_filters_per_epoch(weight_list_per_epoch)
+    sorted_filter_pair_sums, total_filters = get_cosine_sims_filters_per_epoch(
+        weight_list_per_epoch
+    )
 
     # Build a dict mapping layer names to their corresponding filter pairs (0-indexed)
     all_layer_filter_pairs = {}
@@ -177,7 +181,7 @@ def find_pruning_indices(
         )
         all_layer_pruning_indices[layer_name] = pruning_indices
 
-    return all_layer_pruning_indices, all_layer_filter_pairs
+    return all_layer_pruning_indices, all_layer_filter_pairs, total_filters
 
 
 def get_l1_norms(model) -> dict:
@@ -254,7 +258,7 @@ def delete_filters(
         print("Error: Input shape not defined")
 
     print("PRUNING STARTED")
-    filter_pruning_indices, _ = find_pruning_indices(
+    filter_pruning_indices, _, _ = find_pruning_indices(
         model=model,
         weight_list_per_epoch=weight_list_per_epoch,
         num_filter_pairs_to_prune_per_layer=num_filter_pairs_to_prune_per_layer,
@@ -297,7 +301,7 @@ def get_regularizer_value(
     num_filter_pairs_to_prune_per_layer: list,
 ):
     min_filters_per_layer = [0 for i in num_filter_pairs_to_prune_per_layer]
-    _, filter_pairs_dict = find_pruning_indices(
+    _, filter_pairs_dict, total_filters = find_pruning_indices(
         model,
         weight_list_per_epoch,
         num_filter_pairs_to_prune_per_layer,
@@ -314,9 +318,9 @@ def get_regularizer_value(
                 - np.sum(cosine_sims_dict[layer_name][episode[0]])
             )
 
-    regularizer_value = np.exp(regularizer_value)
-    # np.log1p(regularizer_value) * (regularizer_value / max(1, total_filters))
-    # print(regularizer_value)
+    regularizer_value = np.log1p(regularizer_value) * (
+        regularizer_value / max(1, total_filters)
+    )
     return regularizer_value
 
 
@@ -356,7 +360,6 @@ def logging(model, history=None, log_dict=None, INPUT_SHAPE=None) -> dict:
     if log_dict is not None:
         print(f"Current FLOPS: {total_flops}, Current params : {total_params}")
 
-    # Dynamically log filter counts for all convolutional layers
     for layer_name in log_dict.keys():
         if layer_name.startswith("filters_in_"):
             conv_layer_name = layer_name.replace("filters_in_", "")
@@ -364,7 +367,6 @@ def logging(model, history=None, log_dict=None, INPUT_SHAPE=None) -> dict:
             if conv_layer:
                 log_dict[layer_name].append(conv_layer.out_channels)
 
-    # print(log_dict)
     print("Validation accuracy ", max(history["val_accuracy"]))
 
     return log_dict
