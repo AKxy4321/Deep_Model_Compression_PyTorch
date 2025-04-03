@@ -313,7 +313,7 @@ def get_regularizer_value(
                 - np.sum(cosine_sims_dict[layer_name][episode[0]])
             )
 
-    regularizer_value = np.exp(regularizer_value)
+    # regularizer_value = np.exp(regularizer_value)
     # print(regularizer_value)
     return regularizer_value
 
